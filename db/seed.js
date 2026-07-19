@@ -14,18 +14,18 @@ const pool = new Pool({
 });
 
 const ROOMS = [
-  // section, name, capacity_base, capacity_flexible, sexe_restriction, color
-  ['TAMAZIGHT', 'ROOM DOUBL', 2, false, null, '#f28b6b'],
-  ['TAMAZIGHT', 'ROOM DOUBL', 2, false, null, '#f28b6b'],
-  ['TAMAZIGHT', 'ROOM DOUBL', 2, false, null, '#f28b6b'],
-  ['TIFAWIN', 'ROOM DOUBL', 2, false, null, '#a9d6e5'],
-  ['TIFAWIN', 'ROOM TRIPL', 3, false, null, '#a9d6e5'],
-  ['TANIRT', '4 places mixte', 4, false, null, '#b7d7a8'],
-  ['TAFOKT', '5 places mixte', 5, false, null, '#d9b3f0'],
-  ['HAMMAM', '9DIM 2 PLACE HOMME', 2, true, null, '#fff2a8'],
-  ['HAMMAM', '9DIM 2 PLACE FEMME', 2, true, null, '#fff2a8'],
-  ['HAMMAM', 'NEW 5 PLACE', 5, true, null, '#fff2a8'],
-  ['HAMMAM', 'NEW 4 PLACE', 4, true, null, '#fff2a8'],
+  // section, name, capacity_base, capacity_flexible, mixte_autorise, sexe_restriction, color
+  ['TAMAZIGHT', 'ROOM DOUBL', 2, false, false, null, '#f28b6b'],
+  ['TAMAZIGHT', 'ROOM DOUBL', 2, false, false, null, '#f28b6b'],
+  ['TAMAZIGHT', 'ROOM DOUBL', 2, false, false, null, '#f28b6b'],
+  ['TIFAWIN', 'ROOM DOUBL', 2, false, false, null, '#a9d6e5'],
+  ['TIFAWIN', 'ROOM TRIPL', 3, false, false, null, '#a9d6e5'],
+  ['TANIRT', '4 places mixte', 4, false, true, null, '#b7d7a8'],
+  ['TAFOKT', '5 places mixte', 5, false, true, null, '#d9b3f0'],
+  ['HAMMAM', '9DIM 2 PLACE HOMME', 2, true, false, null, '#fff2a8'],
+  ['HAMMAM', '9DIM 2 PLACE FEMME', 2, true, false, null, '#fff2a8'],
+  ['HAMMAM', 'NEW 5 PLACE', 5, true, false, null, '#fff2a8'],
+  ['HAMMAM', 'NEW 4 PLACE', 4, true, false, null, '#fff2a8'],
 ];
 
 const SERVICES = [
@@ -51,11 +51,11 @@ async function main() {
   const { rows } = await pool.query('SELECT COUNT(*) FROM rooms');
   if (parseInt(rows[0].count, 10) === 0) {
     let order = 0;
-    for (const [section, name, capacity_base, capacity_flexible, sexe_restriction, color] of ROOMS) {
+    for (const [section, name, capacity_base, capacity_flexible, mixte_autorise, sexe_restriction, color] of ROOMS) {
       order += 1;
       await pool.query(
-        'INSERT INTO rooms (section, name, capacity_base, capacity_flexible, sexe_restriction, color, sort_order) VALUES ($1,$2,$3,$4,$5,$6,$7)',
-        [section, name, capacity_base, capacity_flexible, sexe_restriction, color, order]
+        'INSERT INTO rooms (section, name, capacity_base, capacity_flexible, mixte_autorise, sexe_restriction, color, sort_order) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
+        [section, name, capacity_base, capacity_flexible, mixte_autorise, sexe_restriction, color, order]
       );
     }
     console.log(`${ROOMS.length} rooms ajoutees.`);
@@ -98,6 +98,7 @@ async function main() {
   console.log('Mise a jour des noms TANIRT/TAFOKT (si besoin)...');
   await pool.query("UPDATE rooms SET name='4 places mixte' WHERE section='TANIRT'");
   await pool.query("UPDATE rooms SET name='5 places mixte' WHERE section='TAFOKT'");
+  await pool.query("UPDATE rooms SET mixte_autorise=true WHERE section IN ('TANIRT','TAFOKT')");
 
   await pool.end();
   console.log('Termine.');

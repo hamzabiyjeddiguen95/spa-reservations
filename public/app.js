@@ -59,6 +59,7 @@ function init() {
   });
   updateHoursLabel();
   $('cancelMoveBtn').addEventListener('click', cancelMove);
+  $('cancelCopyBtn').addEventListener('click', cancelCopy);
   $('includedSkipBtn').addEventListener('click', () => $('includedModal').classList.add('hidden'));
   $('includedAddBtn').addEventListener('click', confirmIncludedMassage);
   $('gratuitBtn').addEventListener('click', () => {
@@ -77,11 +78,22 @@ function init() {
     const entry = e.target.closest('[data-res-id]');
     if (entry) entry.style.opacity = '';
   });
+  let lastDragHoverCell = null;
   $('grid').addEventListener('dragover', (e) => {
-    if (e.target.closest('.res-cell')) e.preventDefault();
+    const cell = e.target.closest('.res-cell');
+    if (!cell) return;
+    e.preventDefault();
+    if (lastDragHoverCell && lastDragHoverCell !== cell) lastDragHoverCell.classList.remove('drag-hover');
+    cell.classList.add('drag-hover');
+    lastDragHoverCell = cell;
+  });
+  $('grid').addEventListener('dragleave', (e) => {
+    const cell = e.target.closest('.res-cell');
+    if (cell) cell.classList.remove('drag-hover');
   });
   $('grid').addEventListener('drop', async (e) => {
     const cell = e.target.closest('.res-cell');
+    if (lastDragHoverCell) { lastDragHoverCell.classList.remove('drag-hover'); lastDragHoverCell = null; }
     if (!cell) return;
     e.preventDefault();
     const resId = e.dataTransfer.getData('text/plain');
@@ -122,6 +134,67 @@ async function doMove(room, hour) {
       return;
     }
     await loadReservations();
+  } catch (e) {
+    alert('Erreur de connexion');
+  }
+}
+
+// ---------- Copier / Coller ----------
+let copyMode = null;
+
+function startCopy(res) {
+  copyMode = { ...res };
+  closeModal();
+  $('copyBanner').classList.remove('hidden');
+}
+
+function cancelCopy() {
+  copyMode = null;
+  $('copyBanner').classList.add('hidden');
+}
+
+async function doPaste(room, hour) {
+  const data = copyMode;
+  cancelCopy();
+  try {
+    const res = await authFetch(`${API}/api/reservations`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        room_id: room.id,
+        service_id: data.service_id,
+        date: $('datePicker').value,
+        hour,
+        duration: data.duration,
+        client_type: data.client_type,
+        nb_personnes: data.nb_personnes,
+        sexe: data.sexe,
+        origine: data.origine,
+        auberge: data.auberge,
+        sans_commission: data.sans_commission,
+        remise: data.remise,
+        alerte: data.alerte,
+        taxi: data.taxi,
+        prix: data.prix,
+        note: data.note,
+        staff_names: data.staff_names,
+      }),
+    });
+    if (!res.ok) {
+      const errData = await res.json();
+      alert(errData.error || 'Impossible de coller ici.');
+      return;
+    }
+    const savedRes = await res.json();
+    await loadReservations();
+    currentRoom = room;
+    currentHour = hour;
+    selectedRoomId = room.id;
+    selectedHour = hour;
+    $('modalTitle').textContent = room.section + ' - ' + room.name;
+    $('modalSub').textContent = hour + 'h00';
+    $('resModal').classList.remove('hidden');
+    showForm(savedRes);
   } catch (e) {
     alert('Erreur de connexion');
   }
@@ -316,6 +389,9 @@ function renderGrid() {
   document.documentElement.style.setProperty('--corner-w', cornerW + 'px');
   document.documentElement.style.setProperty('--col-w', colW + 'px');
 
+  const headerBlock = document.createElement('div');
+  headerBlock.style.cssText = 'position:sticky;top:0;z-index:20;background:white;';
+
   // Ligne 1: sections (fusionnees par groupe consecutif)
   const sectionRow = document.createElement('div');
   sectionRow.style.display = 'flex';
@@ -338,7 +414,7 @@ function renderGrid() {
     sectionRow.appendChild(cell);
     si += count;
   }
-  grid.appendChild(sectionRow);
+  headerBlock.appendChild(sectionRow);
 
   // Ligne 2: noms des rooms
   const headerRow = document.createElement('div');
@@ -346,17 +422,19 @@ function renderGrid() {
   headerRow.style.setProperty('--n-cols', visibleRooms.length);
   const corner2 = document.createElement('div');
   corner2.className = 'hour-corner';
-  corner2.textContent = 'H';
+  corner2.innerHTML = '<span style="writing-mode:vertical-rl;transform:rotate(180deg);font-weight:800;font-size:10px;letter-spacing:1px;">HEURE</span>';
   headerRow.appendChild(corner2);
   visibleRooms.forEach((r) => {
     const cell = document.createElement('div');
     cell.className = 'cell-header';
     cell.innerHTML = r.name
-      .replace('HOMME', '<span style="color:#2563eb;">HOMME</span>')
-      .replace('FEMME', '<span style="color:#db2777;">FEMME</span>');
+      .replace('HOMME', '<br><span style="color:#2563eb;">HOMME</span>')
+      .replace('FEMME', '<br><span style="color:#db2777;">FEMME</span>')
+      .replace('mixte', '<span style="color:#dc2626;">mixte</span>');
     headerRow.appendChild(cell);
   });
-  grid.appendChild(headerRow);
+  headerBlock.appendChild(headerRow);
+  grid.appendChild(headerBlock);
 
   // Lignes: heures
   getHours().forEach((h) => {
@@ -392,8 +470,8 @@ function renderGrid() {
             ${res.auberge && res.sans_commission ? `<div style="font-weight:700;color:#7c3aed;">Sans commission</div>` : ''}
             <div class="res-client">${escapeHtml(res.client_type || '')}</div>
             ${res.prix ? `<div class="res-prix">${res.prix} dh</div>` : ''}
-            ${res.remise ? `<div style="color:#7c3aed;font-size:10px;">Remise: ${res.remise} dh</div>` : ''}
-            <div class="res-detail">${res.hour}H</div>
+            ${res.remise && parseFloat(res.remise) > 0 ? `<div style="color:#7c3aed;font-size:10px;">Remise: ${res.remise} dh</div>` : ''}
+            <div style="font-weight:800;color:#000;">${res.hour}H</div>
             ${res.staff_names ? `<div class="res-staff">${escapeHtml(res.staff_names)}</div>` : ''}
             ${res.taxi ? '<div>🚕 taxi</div>' : ''}
             ${res.note ? `<div style="font-weight:700;color:#dc2626;">${escapeHtml(res.note)}</div>` : ''}
@@ -402,9 +480,12 @@ function renderGrid() {
       }
       cell.dataset.roomId = r.id;
       cell.dataset.hour = h;
+      if (moveMode || copyMode) cell.classList.add('drop-target');
       cell.addEventListener('click', () => {
         if (moveMode) {
           doMove(r, h);
+        } else if (copyMode) {
+          doPaste(r, h);
         } else {
           openSlot(r, h);
         }
@@ -468,6 +549,7 @@ function renderSlotList() {
         <div style="display:flex;gap:6px;">
           <button data-edit="${res.id}" style="padding:6px 10px;">Modifier</button>
           <button data-move="${res.id}" style="padding:6px 10px;">Deplacer</button>
+          <button data-copy="${res.id}" style="padding:6px 10px;">Copier</button>
           <button data-del="${res.id}" style="padding:6px 10px;color:#dc2626;">Suppr</button>
         </div>
       </div>
@@ -478,6 +560,9 @@ function renderSlotList() {
     });
     wrap.querySelectorAll('[data-move]').forEach((btn) => {
       btn.onclick = () => startMove(parseInt(btn.dataset.move, 10));
+    });
+    wrap.querySelectorAll('[data-copy]').forEach((btn) => {
+      btn.onclick = () => startCopy(list.find((r) => r.id == btn.dataset.copy));
     });
     wrap.querySelectorAll('[data-del]').forEach((btn) => {
       btn.onclick = async () => {
@@ -698,4 +783,5 @@ async function deleteReservation() {
 }
 
 init();
+$('closeXBtn').addEventListener('click', closeModal);
 window.addEventListener('resize', () => { if (rooms.length) renderGrid(); });

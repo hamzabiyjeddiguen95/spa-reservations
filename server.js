@@ -120,9 +120,9 @@ app.post('/api/reservations', auth, async (req, res) => {
       [room_id, date, hour]
     );
 
-    // Regle 1 : non-mixite - un creneau ne peut pas melanger homme et femme
+    // Regle 1 : non-mixite - un creneau ne peut pas melanger homme et femme (sauf si la chambre autorise le mixte)
     const existingSexes = new Set(existing.map((r) => r.sexe).filter(Boolean));
-    if (sexe && existingSexes.size > 0 && !existingSexes.has(sexe)) {
+    if (!room.mixte_autorise && sexe && existingSexes.size > 0 && !existingSexes.has(sexe)) {
       return res.status(409).json({ error: `Ce creneau est deja reserve pour des ${[...existingSexes][0]}(s). Le spa ne mixe pas homme/femme dans la meme chambre.` });
     }
     if (room.sexe_restriction && sexe && sexe !== room.sexe_restriction) {
@@ -180,7 +180,7 @@ app.put('/api/reservations/:id', auth, async (req, res) => {
 
       const sexeToCheck = sexe !== undefined ? sexe : current.sexe;
       const existingSexes = new Set(existing.map((r) => r.sexe).filter(Boolean));
-      if (sexeToCheck && existingSexes.size > 0 && !existingSexes.has(sexeToCheck)) {
+      if (!room.mixte_autorise && sexeToCheck && existingSexes.size > 0 && !existingSexes.has(sexeToCheck)) {
         return res.status(409).json({ error: `Cette case est deja reservee pour des ${[...existingSexes][0]}(s). Le spa ne mixe pas homme/femme.` });
       }
       if (room.sexe_restriction && sexeToCheck && sexeToCheck !== room.sexe_restriction) {

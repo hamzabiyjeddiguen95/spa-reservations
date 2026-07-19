@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS rooms (
   name TEXT NOT NULL,           -- ex: "ROOM DOUBL", "9DIM 2 PLACE HOMME"
   capacity_base INTEGER DEFAULT 1,     -- nombre de clients/lits de base
   capacity_flexible BOOLEAN DEFAULT FALSE, -- true = on peut depasser la capacite de base (ex: hammam)
+  mixte_autorise BOOLEAN DEFAULT FALSE, -- true = homme et femme peuvent partager le creneau (tables individuelles)
   sexe_restriction TEXT,        -- 'homme', 'femme', ou NULL si determine par la reservation
   color TEXT DEFAULT '#e5e7eb', -- couleur d'affichage de la colonne
   sort_order INTEGER DEFAULT 0,

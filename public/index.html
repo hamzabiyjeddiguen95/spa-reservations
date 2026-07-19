@@ -34,6 +34,11 @@
     <button id="cancelMoveBtn" style="background:white;border:1px solid #d1d5db;border-radius:8px;padding:6px 10px;">Annuler</button>
   </div>
 
+  <div id="copyBanner" class="hidden" style="background:#dcfce7;color:#166534;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;font-size:14px;">
+    <span>Touche la case ou coller...</span>
+    <button id="cancelCopyBtn" style="background:white;border:1px solid #d1d5db;border-radius:8px;padding:6px 10px;">Annuler</button>
+  </div>
+
   <div id="sectionFilter" style="display:flex;gap:6px;overflow-x:auto;padding:10px 12px;background:white;border-bottom:1px solid #e5e7eb;"></div>
 
   <div id="gridWrapper" class="grid-wrapper">
@@ -64,7 +69,10 @@
 <!-- ============ MODAL RESERVATION ============ -->
 <div id="resModal" class="modal hidden">
   <div class="modal-content">
-    <h2 id="modalTitle">Reservations</h2>
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+      <h2 id="modalTitle">Reservations</h2>
+      <button id="closeXBtn" style="background:none;border:none;font-size:22px;line-height:1;color:#6b7280;padding:0 4px;">✕</button>
+    </div>
     <p id="modalSub" style="color:#6b7280;font-size:13px;margin-bottom:10px;"></p>
     <div id="slotList"></div>
     <button id="addNewBtn" class="btn-secondary" style="margin-bottom:10px;">+ Ajouter un client</button>
