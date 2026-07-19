@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Reservations Spa</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ============ ECRAN LOGIN ============ -->
+<div id="loginScreen" class="screen">
+  <div class="login-box">
+    <h1>Reservations Spa</h1>
+    <input id="loginUsername" type="text" placeholder="Nom d'utilisateur" autocomplete="username">
+    <input id="loginPassword" type="password" placeholder="Mot de passe" autocomplete="current-password">
+    <button id="loginBtn">Se connecter</button>
+    <p id="loginError" class="error"></p>
+  </div>
+</div>
+
+<!-- ============ ECRAN PRINCIPAL ============ -->
+<div id="mainScreen" class="screen hidden">
+  <header class="topbar">
+    <button id="prevDay" class="nav-btn">‹</button>
+    <input id="datePicker" type="date">
+    <button id="nextDay" class="nav-btn">›</button>
+    <span id="userLabel" class="user-label"></span>
+    <button id="logoutBtn" class="logout-btn">Deconnexion</button>
+  </header>
+
+  <div id="gridWrapper" class="grid-wrapper">
+    <div id="grid" class="grid"></div>
+  </div>
+</div>
+
+<!-- ============ MODAL RESERVATION ============ -->
+<div id="resModal" class="modal hidden">
+  <div class="modal-content">
+    <h2 id="modalTitle">Nouvelle reservation</h2>
+    <input id="fClient" type="text" placeholder="Nom / type client (ex: Taziri, Massage)">
+    <div class="row2">
+      <input id="fNbPersonnes" type="number" min="1" value="1" placeholder="Nb personnes">
+      <select id="fSexe">
+        <option value="">Sexe</option>
+        <option value="homme">Homme</option>
+        <option value="femme">Femme</option>
+        <option value="mixte">Mixte</option>
+      </select>
+    </div>
+    <div class="row2">
+      <input id="fPrix" type="number" min="0" step="0.01" placeholder="Prix (dh)">
+      <input id="fDuration" type="number" min="1" value="1" placeholder="Duree (h)">
+    </div>
+    <input id="fOrigine" type="text" placeholder="Origine (ex: etrg, local)">
+    <input id="fStaff" type="text" placeholder="Staff assigne (ex: Nawal, Mouna)">
+    <textarea id="fNote" placeholder="Note"></textarea>
+    <div class="modal-actions">
+      <button id="saveResBtn" class="btn-primary">Enregistrer</button>
+      <button id="deleteResBtn" class="btn-danger hidden">Supprimer</button>
+      <button id="cancelResBtn" class="btn-secondary">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
