@@ -14,18 +14,32 @@ const pool = new Pool({
 });
 
 const ROOMS = [
-  // section, name, capacity, color
-  ['TAMAZIGHT', 'ROOM DOUBLE 1', '2 places', '#f28b6b'],
-  ['TAMAZIGHT', 'ROOM DOUBLE 2', '2 places', '#f28b6b'],
-  ['TAMAZIGHT', 'ROOM DOUBLE 3', '2 places', '#f28b6b'],
-  ['TIFAWIN', 'ROOM DOUBLE 1', '2 places', '#a9d6e5'],
-  ['TIFAWIN', 'ROOM TRIPLE', '3 places', '#a9d6e5'],
-  ['TANIRT', 'APART 4 PLACES (mixte/individuel)', '4 places', '#b7d7a8'],
-  ['TAFOKT', 'APART 5 PLACES (mixte/individuel)', '5 places', '#d9b3f0'],
-  ['HAMMAM', '9DIM 2 PLACES HOMME', '2 places', '#fff2a8'],
-  ['HAMMAM', '9DIM 2 PLACES FEMME', '2 places', '#fff2a8'],
-  ['HAMMAM', 'NEW 5 PLACES', '5 places', '#fff2a8'],
-  ['HAMMAM', 'NEW 4 PLACES', '4 places', '#fff2a8'],
+  // section, name, capacity_base, capacity_flexible, sexe_restriction, color
+  ['TAMAZIGHT', 'ROOM DOUBL', 2, false, null, '#f28b6b'],
+  ['TAMAZIGHT', 'ROOM DOUBL', 2, false, null, '#f28b6b'],
+  ['TAMAZIGHT', 'ROOM DOUBL', 2, false, null, '#f28b6b'],
+  ['TIFAWIN', 'ROOM DOUBL', 2, false, null, '#a9d6e5'],
+  ['TIFAWIN', 'ROOM TRIPL', 3, false, null, '#a9d6e5'],
+  ['TANIRT', 'APART 4 PLACE (mixte individuel)', 4, false, null, '#b7d7a8'],
+  ['TAFOKT', 'APART 5 PLACE (mixte individuel)', 5, false, null, '#d9b3f0'],
+  ['HAMMAM', '9DIM 2 PLACE HOMME', 2, true, null, '#fff2a8'],
+  ['HAMMAM', '9DIM 2 PLACE FEMME', 2, true, null, '#fff2a8'],
+  ['HAMMAM', 'NEW 5 PLACE', 5, true, null, '#fff2a8'],
+  ['HAMMAM', 'NEW 4 PLACE', 4, true, null, '#fff2a8'],
+];
+
+const SERVICES = [
+  // category, name, duration_minutes, prix
+  ['massage', 'Relaxant', 60, 350],
+  ['massage', 'Tonique', 60, 350],
+  ['massage', 'Dos', 60, 350],
+  ['massage', 'Californien', 60, 450],
+  ['massage', 'Pierres chaudes', 60, 550],
+  ['massage', '4 mains', 60, 550],
+  ['hammam', 'Traditionnel', 60, 300],
+  ['hammam', 'Mira', 60, 400],
+  ['hammam', 'Taziri', 120, 550],
+  ['hammam', 'Royal', 120, 750],
 ];
 
 async function main() {
@@ -37,16 +51,32 @@ async function main() {
   const { rows } = await pool.query('SELECT COUNT(*) FROM rooms');
   if (parseInt(rows[0].count, 10) === 0) {
     let order = 0;
-    for (const [section, name, capacity, color] of ROOMS) {
+    for (const [section, name, capacity_base, capacity_flexible, sexe_restriction, color] of ROOMS) {
       order += 1;
       await pool.query(
-        'INSERT INTO rooms (section, name, capacity, color, sort_order) VALUES ($1,$2,$3,$4,$5)',
-        [section, name, capacity, color, order]
+        'INSERT INTO rooms (section, name, capacity_base, capacity_flexible, sexe_restriction, color, sort_order) VALUES ($1,$2,$3,$4,$5,$6,$7)',
+        [section, name, capacity_base, capacity_flexible, sexe_restriction, color, order]
       );
     }
     console.log(`${ROOMS.length} rooms ajoutees.`);
   } else {
     console.log('Rooms deja presentes, rien ajoute.');
+  }
+
+  console.log('Insertion des services (si vides)...');
+  const { rows: svcRows } = await pool.query('SELECT COUNT(*) FROM services');
+  if (parseInt(svcRows[0].count, 10) === 0) {
+    let order = 0;
+    for (const [category, name, duration_minutes, prix] of SERVICES) {
+      order += 1;
+      await pool.query(
+        'INSERT INTO services (category, name, duration_minutes, prix, sort_order) VALUES ($1,$2,$3,$4,$5)',
+        [category, name, duration_minutes, prix, order]
+      );
+    }
+    console.log(`${SERVICES.length} services ajoutes.`);
+  } else {
+    console.log('Services deja presents, rien ajoute.');
   }
 
   // Compte admin par defaut (a changer immediatement apres la premiere connexion)

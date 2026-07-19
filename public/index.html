@@ -29,37 +29,97 @@
     <button id="logoutBtn" class="logout-btn">Deconnexion</button>
   </header>
 
+  <div id="moveBanner" class="hidden" style="background:#fff3cd;color:#7a5c00;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;font-size:14px;">
+    <span>Touche la case de destination...</span>
+    <button id="cancelMoveBtn" style="background:white;border:1px solid #d1d5db;border-radius:8px;padding:6px 10px;">Annuler</button>
+  </div>
+
   <div id="gridWrapper" class="grid-wrapper">
     <div id="grid" class="grid"></div>
+  </div>
+
+  <div style="display:flex;justify-content:center;align-items:center;gap:10px;padding:12px;">
+    <button id="removeHourBtn" class="nav-btn" title="Retirer une heure">-1h</button>
+    <span id="hoursRangeLabel" style="font-size:13px;color:#6b7280;"></span>
+    <button id="addHourBtn" class="nav-btn" title="Ajouter une heure">+1h</button>
+  </div>
+</div>
+
+<!-- ============ MODAL MASSAGE INCLUS (Taziri/Royal) ============ -->
+<div id="includedModal" class="modal hidden">
+  <div class="modal-content">
+    <h2>Massage inclus</h2>
+    <p class="sub" id="includedSub"></p>
+    <select id="fIncludedMassage"></select>
+    <select id="fIncludedRoom"></select>
+    <div class="modal-actions">
+      <button id="includedAddBtn" class="btn-primary">Ajouter a l'heure suivante</button>
+      <button id="includedSkipBtn" class="btn-secondary">Passer</button>
+    </div>
   </div>
 </div>
 
 <!-- ============ MODAL RESERVATION ============ -->
 <div id="resModal" class="modal hidden">
   <div class="modal-content">
-    <h2 id="modalTitle">Nouvelle reservation</h2>
-    <input id="fClient" type="text" placeholder="Nom / type client (ex: Taziri, Massage)">
+    <h2 id="modalTitle">Reservations</h2>
+    <p id="modalSub" style="color:#6b7280;font-size:13px;margin-bottom:10px;"></p>
+    <div id="slotList"></div>
+    <button id="addNewBtn" class="btn-secondary" style="margin-bottom:10px;">+ Ajouter un client</button>
+
+    <div id="resForm" class="hidden">
+    <div id="livePreview" style="background:#f9fafb;border-radius:10px;padding:10px;margin-bottom:12px;font-size:14px;min-height:20px;"></div>
+    <select id="fService">
+      <option value="">Service (massage / hammam)</option>
+    </select>
+    <input id="fClient" type="text" placeholder="Nom du client">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
+      <button type="button" class="chip" data-nb="1" data-sexe="homme">1 Homme</button>
+      <button type="button" class="chip" data-nb="2" data-sexe="homme">2 Hommes</button>
+      <button type="button" class="chip" data-nb="3" data-sexe="homme">3 Hommes</button>
+      <button type="button" class="chip" data-nb="1" data-sexe="femme">1 Femme</button>
+      <button type="button" class="chip" data-nb="2" data-sexe="femme">2 Femmes</button>
+      <button type="button" class="chip" data-nb="3" data-sexe="femme">3 Femmes</button>
+    </div>
     <div class="row2">
-      <input id="fNbPersonnes" type="number" min="1" value="1" placeholder="Nb personnes">
+      <input id="fNbPersonnes" type="number" min="1" placeholder="Nb personnes">
       <select id="fSexe">
         <option value="">Sexe</option>
         <option value="homme">Homme</option>
         <option value="femme">Femme</option>
-        <option value="mixte">Mixte</option>
       </select>
     </div>
+    <select id="fOrigine">
+      <option value="">Etranger ou Arabe</option>
+      <option value="etranger">Etranger</option>
+      <option value="arabe">Arabe</option>
+    </select>
+    <input id="fAuberge" type="text" placeholder="Auberge (si le client vient d'une auberge)">
+    <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:14px;">
+      <input id="fSansCommission" type="checkbox" style="width:auto;margin:0;"> Sans commission (auberge a deja regle)
+    </label>
+    <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:14px;">
+      <input id="fTaxi" type="checkbox" style="width:auto;margin:0;"> Taxi envoye pour ce client
+    </label>
     <div class="row2">
       <input id="fPrix" type="number" min="0" step="0.01" placeholder="Prix (dh)">
-      <input id="fDuration" type="number" min="1" value="1" placeholder="Duree (h)">
+      <button type="button" id="gratuitBtn" class="btn-secondary" style="margin:0;">Gratuit</button>
     </div>
-    <input id="fOrigine" type="text" placeholder="Origine (ex: etrg, local)">
-    <input id="fStaff" type="text" placeholder="Staff assigne (ex: Nawal, Mouna)">
-    <textarea id="fNote" placeholder="Note"></textarea>
+    <input id="fRemise" type="number" min="0" step="0.01" placeholder="Remise (dh)">
+    <input id="fDuration" type="number" min="1" value="1" placeholder="Duree (h)">
+    <input id="fStaff" type="text" placeholder="Extras qui ont travaille (ex: Nawal, Mouna)">
+    <textarea id="fNote" placeholder="Note (visible dans le tableau)"></textarea>
+    <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:14px;">
+      <input id="fAlerte" type="checkbox" style="width:auto;margin:0;"> ⚠️ Marquer en jaune (attention equipe)
+    </label>
     <div class="modal-actions">
       <button id="saveResBtn" class="btn-primary">Enregistrer</button>
       <button id="deleteResBtn" class="btn-danger hidden">Supprimer</button>
       <button id="cancelResBtn" class="btn-secondary">Annuler</button>
     </div>
+    </div>
+
+    <button id="closeSlotBtn" class="btn-secondary">Fermer</button>
   </div>
 </div>
 

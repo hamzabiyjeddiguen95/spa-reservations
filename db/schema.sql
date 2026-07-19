@@ -12,23 +12,40 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS rooms (
   id SERIAL PRIMARY KEY,
   section TEXT NOT NULL,        -- ex: TAMAZIGHT, TIFAWIN, TANIRT, TAFOKT, HAMMAM
-  name TEXT NOT NULL,           -- ex: "ROOM DOUBL 1", "9DIM 2 PLACE HOMME"
-  capacity TEXT,                -- ex: "2 places", "4 places"
+  name TEXT NOT NULL,           -- ex: "ROOM DOUBL", "9DIM 2 PLACE HOMME"
+  capacity_base INTEGER DEFAULT 1,     -- nombre de clients/lits de base
+  capacity_flexible BOOLEAN DEFAULT FALSE, -- true = on peut depasser la capacite de base (ex: hammam)
+  sexe_restriction TEXT,        -- 'homme', 'femme', ou NULL si determine par la reservation
   color TEXT DEFAULT '#e5e7eb', -- couleur d'affichage de la colonne
   sort_order INTEGER DEFAULT 0,
   active BOOLEAN DEFAULT TRUE
 );
 
+CREATE TABLE IF NOT EXISTS services (
+  id SERIAL PRIMARY KEY,
+  category TEXT NOT NULL,       -- 'massage' ou 'hammam'
+  name TEXT NOT NULL,
+  duration_minutes INTEGER DEFAULT 60,
+  prix NUMERIC(10,2) NOT NULL,
+  sort_order INTEGER DEFAULT 0
+);
+
 CREATE TABLE IF NOT EXISTS reservations (
   id SERIAL PRIMARY KEY,
   room_id INTEGER NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+  service_id INTEGER REFERENCES services(id),
   date DATE NOT NULL,
   hour INTEGER NOT NULL,        -- heure de debut (ex: 10, 11, 12...)
   duration INTEGER DEFAULT 1,   -- duree en heures
-  client_type TEXT,             -- ex: "Taziri", "Masage", "Traditio"
+  client_type TEXT,             -- nom / description du client (ex: "Taziri")
   nb_personnes INTEGER DEFAULT 1,
-  sexe TEXT,                    -- homme / femme / mixte
-  origine TEXT,                 -- ex: "etrg" (etranger), "local"
+  sexe TEXT,                    -- homme / femme
+  origine TEXT,                 -- 'etranger' ou 'arabe'
+  auberge TEXT,                 -- nom de l'auberge qui a envoye le client (si applicable)
+  sans_commission BOOLEAN DEFAULT FALSE, -- true si l'auberge a deja regle sans commission
+  remise NUMERIC(10,2) DEFAULT 0,       -- remise appliquee (dh)
+  alerte BOOLEAN DEFAULT FALSE,         -- true = case a surligner en jaune (attention equipe)
+  taxi BOOLEAN DEFAULT FALSE,   -- true si un taxi a ete envoye pour ce client
   prix NUMERIC(10,2),
   note TEXT,
   staff_names TEXT,             -- noms du staff assigne (texte libre, ex: "Nawal, Mouna")

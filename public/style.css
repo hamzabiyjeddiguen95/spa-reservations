@@ -164,6 +164,12 @@ body {
 .res-cell.filled {
   background: #fff8e1;
 }
+.res-cell.full {
+  background: #ffd9d6;
+}
+.res-cell.alerte {
+  background: #fef08a;
+}
 .res-client { font-weight: 700; color: #1f2937; }
 .res-detail { color: #4b5563; }
 .res-staff { color: #2563eb; font-weight: 600; }
@@ -201,3 +207,5 @@ body {
 .btn-primary { background: #ff7a5c; color: white; border: none; padding: 14px; border-radius: 10px; font-weight: 700; font-size: 15px; }
 .btn-danger { background: #fee2e2; color: #dc2626; border: none; padding: 14px; border-radius: 10px; font-weight: 700; font-size: 15px; }
 .btn-secondary { background: #f3f4f6; color: #374151; border: none; padding: 14px; border-radius: 10px; font-size: 15px; }
+.chip { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; padding: 8px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; }
+.chip.active { background: #ff7a5c; color: white; border-color: #ff7a5c; }
