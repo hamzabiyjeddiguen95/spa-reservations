@@ -293,20 +293,28 @@ function renderGrid() {
   grid.innerHTML = '';
   grid.style.setProperty('--n-cols', rooms.length);
 
-  // Ligne 1: sections
+  // Ligne 1: sections (fusionnees par groupe consecutif)
   const sectionRow = document.createElement('div');
-  sectionRow.className = 'grid-row';
-  sectionRow.style.setProperty('--n-cols', rooms.length);
+  sectionRow.style.display = 'flex';
   const corner1 = document.createElement('div');
   corner1.className = 'hour-corner';
+  corner1.style.width = '50px';
+  corner1.style.flex = 'none';
   sectionRow.appendChild(corner1);
-  rooms.forEach((r) => {
+  let si = 0;
+  while (si < rooms.length) {
+    const section = rooms[si].section;
+    let count = 0;
+    while (si + count < rooms.length && rooms[si + count].section === section) count++;
     const cell = document.createElement('div');
     cell.className = 'cell-section';
-    cell.style.background = SECTION_COLORS[r.section] || '#999';
-    cell.textContent = r.section;
+    cell.style.background = SECTION_COLORS[section] || '#999';
+    cell.style.width = (110 * count) + 'px';
+    cell.style.flex = 'none';
+    cell.textContent = section;
     sectionRow.appendChild(cell);
-  });
+    si += count;
+  }
   grid.appendChild(sectionRow);
 
   // Ligne 2: noms des rooms
