@@ -57,3 +57,17 @@ CREATE TABLE IF NOT EXISTS reservations (
 
 CREATE INDEX IF NOT EXISTS idx_reservations_date ON reservations(date);
 CREATE INDEX IF NOT EXISTS idx_reservations_room ON reservations(room_id, date);
+
+-- Ajouts de securite : si la table existait deja avant l'ajout de ces colonnes,
+-- CREATE TABLE IF NOT EXISTS ne les cree pas tout seul. On force leur ajout ici.
+ALTER TABLE rooms ADD COLUMN IF NOT EXISTS mixte_autorise BOOLEAN DEFAULT FALSE;
+ALTER TABLE rooms ADD COLUMN IF NOT EXISTS sexe_restriction TEXT;
+ALTER TABLE reservations ADD COLUMN IF NOT EXISTS service_id INTEGER REFERENCES services(id);
+ALTER TABLE reservations ADD COLUMN IF NOT EXISTS origine TEXT;
+ALTER TABLE reservations ADD COLUMN IF NOT EXISTS auberge TEXT;
+ALTER TABLE reservations ADD COLUMN IF NOT EXISTS sans_commission BOOLEAN DEFAULT FALSE;
+ALTER TABLE reservations ADD COLUMN IF NOT EXISTS remise NUMERIC(10,2) DEFAULT 0;
+ALTER TABLE reservations ADD COLUMN IF NOT EXISTS alerte BOOLEAN DEFAULT FALSE;
+ALTER TABLE reservations ADD COLUMN IF NOT EXISTS taxi BOOLEAN DEFAULT FALSE;
+ALTER TABLE reservations ADD COLUMN IF NOT EXISTS note TEXT;
+ALTER TABLE reservations ADD COLUMN IF NOT EXISTS staff_names TEXT;
