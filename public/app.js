@@ -210,7 +210,25 @@ async function loadRoomsAndReservations() {
   const svcRes = await authFetch(`${API}/api/services`);
   services = await svcRes.json();
   populateServiceSelect();
+  populateSectionFilter();
   await loadReservations();
+}
+
+let selectedSection = null;
+
+function populateSectionFilter() {
+  const bar = $('sectionFilter');
+  const sections = [...new Set(rooms.map((r) => r.section))];
+  bar.innerHTML = '';
+  const makeBtn = (label, value) => {
+    const btn = document.createElement('button');
+    btn.textContent = label;
+    btn.style.cssText = 'white-space:nowrap;padding:8px 14px;border-radius:20px;border:1px solid #d1d5db;font-size:13px;font-weight:600;background:' + (selectedSection === value ? '#ff7a5c' : '#f3f4f6') + ';color:' + (selectedSection === value ? 'white' : '#374151') + ';';
+    btn.onclick = () => { selectedSection = value; populateSectionFilter(); renderGrid(); };
+    return btn;
+  };
+  bar.appendChild(makeBtn('Tout', null));
+  sections.forEach((s) => bar.appendChild(makeBtn(s, s)));
 }
 
 function populateServiceSelect() {
@@ -291,25 +309,33 @@ function findResList(roomId, hour) {
 function renderGrid() {
   const grid = $('grid');
   grid.innerHTML = '';
-  grid.style.setProperty('--n-cols', rooms.length);
+  const visibleRooms = selectedSection ? rooms.filter((r) => r.section === selectedSection) : rooms;
+  grid.style.setProperty('--n-cols', visibleRooms.length);
+
+  // Calcule la largeur des colonnes pour que tout tienne sans scroll horizontal
+  const cornerW = 22;
+  const available = window.innerWidth - cornerW - 4;
+  const colW = Math.max(20, Math.floor(available / visibleRooms.length));
+  document.documentElement.style.setProperty('--corner-w', cornerW + 'px');
+  document.documentElement.style.setProperty('--col-w', colW + 'px');
 
   // Ligne 1: sections (fusionnees par groupe consecutif)
   const sectionRow = document.createElement('div');
   sectionRow.style.display = 'flex';
   const corner1 = document.createElement('div');
   corner1.className = 'hour-corner';
-  corner1.style.width = '50px';
+  corner1.style.width = cornerW + 'px';
   corner1.style.flex = 'none';
   sectionRow.appendChild(corner1);
   let si = 0;
-  while (si < rooms.length) {
-    const section = rooms[si].section;
+  while (si < visibleRooms.length) {
+    const section = visibleRooms[si].section;
     let count = 0;
-    while (si + count < rooms.length && rooms[si + count].section === section) count++;
+    while (si + count < visibleRooms.length && visibleRooms[si + count].section === section) count++;
     const cell = document.createElement('div');
     cell.className = 'cell-section';
     cell.style.background = SECTION_COLORS[section] || '#999';
-    cell.style.width = (110 * count) + 'px';
+    cell.style.width = (colW * count) + 'px';
     cell.style.flex = 'none';
     cell.textContent = section;
     sectionRow.appendChild(cell);
@@ -320,12 +346,12 @@ function renderGrid() {
   // Ligne 2: noms des rooms
   const headerRow = document.createElement('div');
   headerRow.className = 'grid-row';
-  headerRow.style.setProperty('--n-cols', rooms.length);
+  headerRow.style.setProperty('--n-cols', visibleRooms.length);
   const corner2 = document.createElement('div');
   corner2.className = 'hour-corner';
   corner2.textContent = 'H';
   headerRow.appendChild(corner2);
-  rooms.forEach((r) => {
+  visibleRooms.forEach((r) => {
     const cell = document.createElement('div');
     cell.className = 'cell-header';
     cell.textContent = r.name;
@@ -337,14 +363,14 @@ function renderGrid() {
   getHours().forEach((h) => {
     const row = document.createElement('div');
     row.className = 'grid-row';
-    row.style.setProperty('--n-cols', rooms.length);
+    row.style.setProperty('--n-cols', visibleRooms.length);
 
     const hourCell = document.createElement('div');
     hourCell.className = 'hour-cell';
     hourCell.textContent = h + 'H';
     row.appendChild(hourCell);
 
-    rooms.forEach((r) => {
+    visibleRooms.forEach((r) => {
       const cell = document.createElement('div');
       const list = findResList(r.id, h);
       const dejaPris = list.reduce((sum, r2) => sum + (r2.nb_personnes || 0), 0);
@@ -674,3 +700,4 @@ async function deleteReservation() {
 
 init();
 $('closeSlotBtn').addEventListener('click', closeModal);
+window.addEventListener('resize', () => { if (rooms.length) renderGrid(); });
