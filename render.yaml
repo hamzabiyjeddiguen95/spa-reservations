@@ -1,6 +1,6 @@
 databases:
   - name: spa-db
-    plan: starter
+    plan: basic-256mb
     postgresMajorVersion: "16"
 
 services:
