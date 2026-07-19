@@ -34,10 +34,7 @@ function init() {
   $('prevDay').addEventListener('click', () => shiftDay(-1));
   $('nextDay').addEventListener('click', () => shiftDay(1));
   $('datePicker').addEventListener('change', loadReservations);
-  $('cancelResBtn').addEventListener('click', () => {
-    $('resForm').classList.add('hidden');
-    editingResId = null;
-  });
+  $('cancelResBtn').addEventListener('click', closeModal);
   $('saveResBtn').addEventListener('click', saveReservation);
   $('deleteResBtn').addEventListener('click', deleteReservation);
   $('addHourBtn').addEventListener('click', () => {
@@ -312,10 +309,10 @@ function renderGrid() {
   const visibleRooms = selectedSection ? rooms.filter((r) => r.section === selectedSection) : rooms;
   grid.style.setProperty('--n-cols', visibleRooms.length);
 
-  // Calcule la largeur des colonnes pour que tout tienne sans scroll horizontal
-  const cornerW = 22;
+  // Calcule la largeur des colonnes (plus grande, avec scroll horizontal si besoin)
+  const cornerW = 34;
   const available = window.innerWidth - cornerW - 4;
-  const colW = Math.max(20, Math.floor(available / visibleRooms.length));
+  const colW = Math.max(92, Math.floor(available / visibleRooms.length));
   document.documentElement.style.setProperty('--corner-w', cornerW + 'px');
   document.documentElement.style.setProperty('--col-w', colW + 'px');
 
@@ -354,7 +351,9 @@ function renderGrid() {
   visibleRooms.forEach((r) => {
     const cell = document.createElement('div');
     cell.className = 'cell-header';
-    cell.textContent = r.name;
+    cell.innerHTML = r.name
+      .replace('HOMME', '<span style="color:#2563eb;">HOMME</span>')
+      .replace('FEMME', '<span style="color:#db2777;">FEMME</span>');
     headerRow.appendChild(cell);
   });
   grid.appendChild(headerRow);
@@ -699,5 +698,4 @@ async function deleteReservation() {
 }
 
 init();
-$('closeSlotBtn').addEventListener('click', closeModal);
 window.addEventListener('resize', () => { if (rooms.length) renderGrid(); });

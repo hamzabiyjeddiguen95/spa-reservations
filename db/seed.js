@@ -20,8 +20,8 @@ const ROOMS = [
   ['TAMAZIGHT', 'ROOM DOUBL', 2, false, null, '#f28b6b'],
   ['TIFAWIN', 'ROOM DOUBL', 2, false, null, '#a9d6e5'],
   ['TIFAWIN', 'ROOM TRIPL', 3, false, null, '#a9d6e5'],
-  ['TANIRT', 'APART 4 PLACE (mixte individuel)', 4, false, null, '#b7d7a8'],
-  ['TAFOKT', 'APART 5 PLACE (mixte individuel)', 5, false, null, '#d9b3f0'],
+  ['TANIRT', '4 places mixte', 4, false, null, '#b7d7a8'],
+  ['TAFOKT', '5 places mixte', 5, false, null, '#d9b3f0'],
   ['HAMMAM', '9DIM 2 PLACE HOMME', 2, true, null, '#fff2a8'],
   ['HAMMAM', '9DIM 2 PLACE FEMME', 2, true, null, '#fff2a8'],
   ['HAMMAM', 'NEW 5 PLACE', 5, true, null, '#fff2a8'],
@@ -94,6 +94,10 @@ async function main() {
   } else {
     console.log('Compte admin deja present.');
   }
+
+  console.log('Mise a jour des noms TANIRT/TAFOKT (si besoin)...');
+  await pool.query("UPDATE rooms SET name='4 places mixte' WHERE section='TANIRT'");
+  await pool.query("UPDATE rooms SET name='5 places mixte' WHERE section='TAFOKT'");
 
   await pool.end();
   console.log('Termine.');
