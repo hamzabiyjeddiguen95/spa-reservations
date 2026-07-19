@@ -428,8 +428,8 @@ function renderGrid() {
     const cell = document.createElement('div');
     cell.className = 'cell-header';
     cell.innerHTML = r.name
-      .replace('HOMME', '<br><span style="color:#2563eb;">HOMME</span>')
-      .replace('FEMME', '<br><span style="color:#db2777;">FEMME</span>')
+      .replace('home', '<br><span style="color:#2563eb;">home</span>')
+      .replace('Feme', '<br><span style="color:#db2777;">Feme</span>')
       .replace('mixte', '<span style="color:#dc2626;">mixte</span>');
     headerRow.appendChild(cell);
   });

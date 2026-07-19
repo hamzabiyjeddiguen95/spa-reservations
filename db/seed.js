@@ -20,10 +20,10 @@ const ROOMS = [
   ['TAMAZIGHT', 'ROOM DOUBL', 2, false, false, null, '#f28b6b'],
   ['TIFAWIN', 'ROOM DOUBL', 2, false, false, null, '#a9d6e5'],
   ['TIFAWIN', 'ROOM TRIPL', 3, false, false, null, '#a9d6e5'],
-  ['TANIRT', '4 places mixte', 4, false, true, null, '#b7d7a8'],
-  ['TAFOKT', '5 places mixte', 5, false, true, null, '#d9b3f0'],
-  ['HAMMAM', '9DIM 2 PLACE HOMME', 2, true, false, null, '#fff2a8'],
-  ['HAMMAM', '9DIM 2 PLACE FEMME', 2, true, false, null, '#fff2a8'],
+  ['TANIRT', '4 place mixte', 4, false, true, null, '#b7d7a8'],
+  ['TAFOKT', '5 place mixte', 5, false, true, null, '#d9b3f0'],
+  ['HAMMAM', '2 place home', 2, true, false, null, '#fff2a8'],
+  ['HAMMAM', '2 place Feme', 2, true, false, null, '#fff2a8'],
   ['HAMMAM', 'NEW 5 PLACE', 5, true, false, null, '#fff2a8'],
   ['HAMMAM', 'NEW 4 PLACE', 4, true, false, null, '#fff2a8'],
 ];
@@ -96,9 +96,11 @@ async function main() {
   }
 
   console.log('Mise a jour des noms TANIRT/TAFOKT (si besoin)...');
-  await pool.query("UPDATE rooms SET name='4 places mixte' WHERE section='TANIRT'");
-  await pool.query("UPDATE rooms SET name='5 places mixte' WHERE section='TAFOKT'");
+  await pool.query("UPDATE rooms SET name='4 place mixte' WHERE section='TANIRT'");
+  await pool.query("UPDATE rooms SET name='5 place mixte' WHERE section='TAFOKT'");
   await pool.query("UPDATE rooms SET mixte_autorise=true WHERE section IN ('TANIRT','TAFOKT')");
+  await pool.query("UPDATE rooms SET name='2 place home' WHERE section='HAMMAM' AND name ILIKE '%homme%'");
+  await pool.query("UPDATE rooms SET name='2 place Feme' WHERE section='HAMMAM' AND name ILIKE '%femme%'");
 
   await pool.end();
   console.log('Termine.');
