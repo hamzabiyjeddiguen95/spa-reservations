@@ -46,6 +46,10 @@ function init() {
 
   $('loginBtn').addEventListener('click', doLogin);
   $('logoutBtn').addEventListener('click', doLogout);
+  $('profileBtn').addEventListener('click', openProfileModal);
+  $('profileCloseBtn').addEventListener('click', closeProfileModal);
+  $('profileCancelBtn').addEventListener('click', closeProfileModal);
+  $('profileSaveBtn').addEventListener('click', saveProfile);
   $('cancelResBtn').addEventListener('click', closeModal);
   $('saveResBtn').addEventListener('click', saveReservation);
   $('deleteResBtn').addEventListener('click', deleteReservation);
@@ -505,6 +509,64 @@ function doLogout() {
   showLogin();
 }
 
+// ---------- Mon profil ----------
+function openProfileModal() {
+  $('profileUsername').textContent = currentUser.username;
+  $('fProfileFullName').value = currentUser.full_name || '';
+  $('fProfileCurrentPwd').value = '';
+  $('fProfileNewPwd').value = '';
+  $('fProfileConfirmPwd').value = '';
+  $('profileErrMsg').textContent = '';
+  $('profileOkMsg').textContent = '';
+  $('profileModal').classList.remove('hidden');
+}
+
+function closeProfileModal() {
+  $('profileModal').classList.add('hidden');
+}
+
+async function saveProfile() {
+  const fullName = $('fProfileFullName').value.trim();
+  const currentPwd = $('fProfileCurrentPwd').value;
+  const newPwd = $('fProfileNewPwd').value;
+  const confirmPwd = $('fProfileConfirmPwd').value;
+  $('profileErrMsg').textContent = '';
+  $('profileOkMsg').textContent = '';
+
+  if (newPwd && newPwd !== confirmPwd) {
+    $('profileErrMsg').textContent = 'Les deux nouveaux mots de passe ne correspondent pas.';
+    return;
+  }
+
+  try {
+    const res = await authFetch(`${API}/api/auth/me`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        full_name: fullName,
+        current_password: currentPwd || undefined,
+        new_password: newPwd || undefined,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      $('profileErrMsg').textContent = data.error || 'Erreur.';
+      return;
+    }
+    token = data.token;
+    currentUser = data.user;
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(currentUser));
+    $('userLabel').textContent = currentUser.full_name;
+    $('profileOkMsg').textContent = 'Profil mis a jour avec succes.';
+    $('fProfileCurrentPwd').value = '';
+    $('fProfileNewPwd').value = '';
+    $('fProfileConfirmPwd').value = '';
+  } catch (e) {
+    $('profileErrMsg').textContent = 'Erreur de connexion.';
+  }
+}
+
 function showLogin() {
   $('loginScreen').classList.remove('hidden');
   $('mainScreen').classList.add('hidden');
@@ -550,7 +612,7 @@ function populateSectionFilter() {
   const makeBtn = (label, value) => {
     const btn = document.createElement('button');
     btn.textContent = label;
-    btn.style.cssText = 'white-space:nowrap;padding:8px 14px;border-radius:20px;border:1px solid #d1d5db;font-size:13px;font-weight:600;background:' + (selectedSection === value ? '#ff7a5c' : '#f3f4f6') + ';color:' + (selectedSection === value ? 'white' : '#374151') + ';';
+    btn.style.cssText = 'white-space:nowrap;padding:8px 14px;border-radius:20px;border:1px solid #d1d5db;font-size:13px;font-weight:600;background:' + (selectedSection === value ? '#5a3823' : '#f3f4f6') + ';color:' + (selectedSection === value ? 'white' : '#374151') + ';';
     btn.onclick = () => { selectedSection = value; populateSectionFilter(); renderGrid(); };
     return btn;
   };
@@ -1012,7 +1074,7 @@ async function renderIncludedRoomList(candidateRooms, hour, nb) {
       x.style.borderLeftColor = 'transparent';
       x.style.background = 'white';
     });
-    el.style.borderLeftColor = '#ff7a5c';
+    el.style.borderLeftColor = '#5a3823';
     el.style.background = '#fff5f2';
   }
 

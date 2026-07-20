@@ -15,54 +15,78 @@ body {
   align-items: center;
   justify-content: center;
   padding: 20px;
-  background: linear-gradient(135deg, #ff7a5c, #ffb347);
+  background:
+    linear-gradient(rgba(61,36,25,0.55), rgba(61,36,25,0.72)),
+    url('/assets/hammam-bg.jpg');
+  background-size: cover;
+  background-position: center;
 }
 .login-box {
-  background: white;
-  border-radius: 16px;
-  padding: 32px 24px;
+  background: #faf6ef;
+  border-radius: 18px;
+  padding: 38px 28px 30px;
   width: 100%;
-  max-width: 360px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.15);
-}
-.login-box h1 {
-  font-size: 22px;
-  margin-bottom: 24px;
+  max-width: 380px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.35);
   text-align: center;
-  color: #ff7a5c;
+}
+.login-logo {
+  width: 100%;
+  max-width: 220px;
+  height: auto;
+  margin: 0 auto 6px;
+  display: block;
+}
+.login-subtitle {
+  font-size: 12.5px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #b08d57;
+  font-weight: 600;
+  margin-bottom: 26px;
 }
 .login-box input {
   width: 100%;
   padding: 14px;
   margin-bottom: 12px;
-  border: 1px solid #d1d5db;
+  border: 1px solid #e3d9c6;
+  background: white;
   border-radius: 10px;
   font-size: 16px;
+  text-align: left;
+}
+.login-box input:focus {
+  outline: none;
+  border-color: #b08d57;
 }
 .login-box button {
   width: 100%;
   padding: 14px;
   border: none;
   border-radius: 10px;
-  background: #ff7a5c;
-  color: white;
-  font-size: 16px;
+  background: linear-gradient(135deg, #4a2c1d, #6b4530);
+  color: #f0e6d2;
+  font-size: 15.5px;
   font-weight: 600;
+  letter-spacing: .5px;
+  margin-top: 4px;
+  cursor: pointer;
 }
-.error { color: #dc2626; margin-top: 10px; font-size: 14px; text-align: center; }
+.error { color: #b3261e; margin-top: 10px; font-size: 14px; text-align: center; }
 
 /* ---------- Topbar ---------- */
 .topbar {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 12px;
-  background: white;
+  gap: 10px;
+  padding: 10px 14px;
+  background: linear-gradient(135deg, #3d2415, #5a3823);
   position: sticky;
   top: 0;
   z-index: 20;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
 }
+.topbar-logo { height: 28px; width: auto; flex: none; }
 .nav-btn {
   background: #f3f4f6;
   border: none;
@@ -79,10 +103,10 @@ body {
   font-size: 14px;
   min-width: 0;
 }
-.user-label { font-size: 12px; color: #6b7280; white-space: nowrap; }
+.user-label { font-size: 12px; color: #f0e6d2; white-space: nowrap; flex: 1; }
 .logout-btn {
-  background: #fee2e2;
-  color: #dc2626;
+  background: rgba(255,255,255,0.15);
+  color: #f0e6d2;
   border: none;
   padding: 8px 10px;
   border-radius: 8px;
@@ -187,12 +211,12 @@ body {
   background: #fef08a;
 }
 .res-cell.drop-target {
-  outline: 2px dashed #ff7a5c;
+  outline: 2px dashed #5a3823;
   outline-offset: -2px;
 }
 .res-cell.drag-hover {
   background: #ffe4d6 !important;
-  outline: 2px solid #ff7a5c;
+  outline: 2px solid #5a3823;
   outline-offset: -2px;
 }
 .res-client { font-weight: 700; color: #1f2937; }
@@ -229,18 +253,18 @@ body {
 .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .row2 input, .row2 select { margin-bottom: 0; }
 .modal-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
-.btn-primary { background: #ff7a5c; color: white; border: none; padding: 14px; border-radius: 10px; font-weight: 700; font-size: 15px; }
+.btn-primary { background: #5a3823; color: white; border: none; padding: 14px; border-radius: 10px; font-weight: 700; font-size: 15px; }
 .btn-danger { background: #fee2e2; color: #dc2626; border: none; padding: 14px; border-radius: 10px; font-weight: 700; font-size: 15px; }
 .btn-secondary { background: #f3f4f6; color: #374151; border: none; padding: 14px; border-radius: 10px; font-size: 15px; }
 .chip { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; padding: 8px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; }
-.chip.active { background: #ff7a5c; color: white; border-color: #ff7a5c; }
+.chip.active { background: #5a3823; color: white; border-color: #5a3823; }
 
 /* ---------- Barre de date simple ---------- */
 .datebar { display:flex; align-items:center; gap:8px; background:white; border-radius:16px; padding:10px 12px; margin:12px; box-shadow:0 2px 8px rgba(0,0,0,0.06); }
-.datebar .nav-btn2 { background:#fff1ec; border:none; color:#ff7a5c; width:36px; height:36px; border-radius:10px; font-size:18px; font-weight:700; cursor:pointer; flex:none; }
+.datebar .nav-btn2 { background:#f3e9d8; border:none; color:#5a3823; width:36px; height:36px; border-radius:10px; font-size:18px; font-weight:700; cursor:pointer; flex:none; }
 .datebar .date-wrap { flex:1; position:relative; }
 .datebar .date-display { width:100%; text-align:center; font-size:15px; font-weight:700; color:#1f2937; text-transform:capitalize; padding:8px 4px; background:#f9fafb; border-radius:10px; cursor:pointer; }
-.datebar .today-btn2 { background:#ff7a5c; color:white; border:none; border-radius:10px; padding:0 14px; height:36px; font-size:12.5px; font-weight:600; cursor:pointer; flex:none; white-space:nowrap; }
+.datebar .today-btn2 { background:#5a3823; color:white; border:none; border-radius:10px; padding:0 14px; height:36px; font-size:12.5px; font-weight:600; cursor:pointer; flex:none; white-space:nowrap; }
 .date-res-dot { display:inline-block; width:6px; height:6px; border-radius:50%; background:#f87171; margin-left:6px; vertical-align:middle; }
 
 /* Popup calendrier */
@@ -250,7 +274,7 @@ body {
 .cal-popup-overlay.show .cal-popup { transform:translateY(0); }
 .cal-popup-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
 .cal-popup-monthbtn { font-size:16px; font-weight:700; color:#1f2937; background:#f3f4f6; border:none; padding:8px 14px; border-radius:10px; cursor:pointer; text-transform:capitalize; }
-.cal-popup-nav { background:#fff1ec; border:none; color:#ff7a5c; width:34px; height:34px; border-radius:10px; font-size:16px; font-weight:700; cursor:pointer; }
+.cal-popup-nav { background:#f3e9d8; border:none; color:#5a3823; width:34px; height:34px; border-radius:10px; font-size:16px; font-weight:700; cursor:pointer; }
 .cal-popup-close { background:#f3f4f6; border:none; color:#6b7280; width:34px; height:34px; border-radius:10px; font-size:16px; cursor:pointer; }
 .cal-popup-dows { display:grid; grid-template-columns:repeat(7,1fr); text-align:center; margin-bottom:8px; }
 .cal-popup-dows span { font-size:11px; color:#9ca3af; font-weight:600; text-transform:uppercase; }
@@ -258,10 +282,10 @@ body {
 .cal-popup-day { aspect-ratio:1; border-radius:50%; display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:13.5px; font-weight:600; color:#374151; cursor:pointer; position:relative; }
 .cal-popup-day.otherm { color:#d1d5db; }
 .cal-popup-day.today:not(.selected) { box-shadow:inset 0 0 0 2px #22c55e; }
-.cal-popup-day.selected { background:linear-gradient(135deg,#ff7a5c,#ffb347); color:white; }
+.cal-popup-day.selected { background:linear-gradient(135deg,#4a2c1d,#8a6a3e); color:white; }
 .cal-popup-day .pd-dot { width:5px; height:5px; border-radius:50%; background:#ef4444; margin-top:2px; }
 .cal-popup-day.selected .pd-dot { background:white; }
 .cal-popup-yeargrid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
 .cal-popup-yearmonth { background:#f9fafb; border-radius:12px; padding:14px 4px; text-align:center; font-size:13.5px; font-weight:600; color:#374151; cursor:pointer; text-transform:capitalize; }
-.cal-popup-yearmonth.selected { background:linear-gradient(135deg,#ff7a5c,#ffb347); color:white; }
+.cal-popup-yearmonth.selected { background:linear-gradient(135deg,#4a2c1d,#8a6a3e); color:white; }
 .cal-popup-yearmonth .ym-dot { width:5px; height:5px; border-radius:50%; background:#ef4444; margin:5px auto 0; }

@@ -57,6 +57,45 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
+// Modifier son propre profil (nom complet et/ou mot de passe)
+app.put('/api/auth/me', auth, async (req, res) => {
+  const { full_name, current_password, new_password } = req.body;
+  try {
+    const { rows } = await pool.query('SELECT * FROM users WHERE id=$1', [req.user.id]);
+    const user = rows[0];
+    if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });
+
+    let passwordHash = user.password_hash;
+    if (new_password) {
+      if (!current_password) {
+        return res.status(400).json({ error: 'Mot de passe actuel requis pour le changer' });
+      }
+      const ok = await bcrypt.compare(current_password, user.password_hash);
+      if (!ok) return res.status(401).json({ error: 'Mot de passe actuel incorrect' });
+      if (new_password.length < 6) {
+        return res.status(400).json({ error: 'Le nouveau mot de passe doit faire au moins 6 caracteres' });
+      }
+      passwordHash = await bcrypt.hash(new_password, 10);
+    }
+
+    const newFullName = full_name !== undefined && full_name !== '' ? full_name : user.full_name;
+    await pool.query(
+      'UPDATE users SET full_name=$1, password_hash=$2 WHERE id=$3',
+      [newFullName, passwordHash, req.user.id]
+    );
+
+    const token = jwt.sign(
+      { id: user.id, username: user.username, full_name: newFullName, is_admin: user.is_admin },
+      JWT_SECRET,
+      { expiresIn: '30d' }
+    );
+    res.json({ token, user: { username: user.username, full_name: newFullName, is_admin: user.is_admin } });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 // Creer un compte staff - protege par ADMIN_KEY (pas besoin d'etre deja connecte)
 app.post('/api/users', async (req, res) => {
   const { adminKey, username, password, full_name, is_admin } = req.body;
