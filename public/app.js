@@ -512,6 +512,7 @@ function doLogout() {
 // ---------- Mon profil ----------
 function openProfileModal() {
   $('profileUsername').textContent = currentUser.username;
+  $('fProfileUsername').value = currentUser.username;
   $('fProfileFullName').value = currentUser.full_name || '';
   $('fProfileCurrentPwd').value = '';
   $('fProfileNewPwd').value = '';
@@ -526,6 +527,7 @@ function closeProfileModal() {
 }
 
 async function saveProfile() {
+  const username = $('fProfileUsername').value.trim();
   const fullName = $('fProfileFullName').value.trim();
   const currentPwd = $('fProfileCurrentPwd').value;
   const newPwd = $('fProfileNewPwd').value;
@@ -533,6 +535,10 @@ async function saveProfile() {
   $('profileErrMsg').textContent = '';
   $('profileOkMsg').textContent = '';
 
+  if (!username) {
+    $('profileErrMsg').textContent = 'Le nom d\'utilisateur ne peut pas etre vide.';
+    return;
+  }
   if (newPwd && newPwd !== confirmPwd) {
     $('profileErrMsg').textContent = 'Les deux nouveaux mots de passe ne correspondent pas.';
     return;
@@ -543,6 +549,7 @@ async function saveProfile() {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        username: username,
         full_name: fullName,
         current_password: currentPwd || undefined,
         new_password: newPwd || undefined,
@@ -558,7 +565,8 @@ async function saveProfile() {
     localStorage.setItem('token', token);
     localStorage.setItem('user', JSON.stringify(currentUser));
     $('userLabel').textContent = currentUser.full_name;
-    $('profileOkMsg').textContent = 'Profil mis a jour avec succes.';
+    $('profileUsername').textContent = currentUser.username;
+    $('profileOkMsg').textContent = 'Profil mis a jour avec succes. Ton nom d\'utilisateur pour te connecter est : ' + currentUser.username;
     $('fProfileCurrentPwd').value = '';
     $('fProfileNewPwd').value = '';
     $('fProfileConfirmPwd').value = '';

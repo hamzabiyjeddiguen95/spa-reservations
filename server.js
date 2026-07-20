@@ -59,7 +59,7 @@ app.post('/api/login', async (req, res) => {
 
 // Modifier son propre profil (nom complet et/ou mot de passe)
 app.put('/api/auth/me', auth, async (req, res) => {
-  const { full_name, current_password, new_password } = req.body;
+  const { username, full_name, current_password, new_password } = req.body;
   try {
     const { rows } = await pool.query('SELECT * FROM users WHERE id=$1', [req.user.id]);
     const user = rows[0];
@@ -79,17 +79,24 @@ app.put('/api/auth/me', auth, async (req, res) => {
     }
 
     const newFullName = full_name !== undefined && full_name !== '' ? full_name : user.full_name;
-    await pool.query(
-      'UPDATE users SET full_name=$1, password_hash=$2 WHERE id=$3',
-      [newFullName, passwordHash, req.user.id]
-    );
+    const newUsername = username !== undefined && username.trim() !== '' ? username.trim() : user.username;
+
+    try {
+      await pool.query(
+        'UPDATE users SET full_name=$1, username=$2, password_hash=$3 WHERE id=$4',
+        [newFullName, newUsername, passwordHash, req.user.id]
+      );
+    } catch (e) {
+      if (e.code === '23505') return res.status(409).json({ error: 'Ce nom d\'utilisateur existe deja.' });
+      throw e;
+    }
 
     const token = jwt.sign(
-      { id: user.id, username: user.username, full_name: newFullName, is_admin: user.is_admin },
+      { id: user.id, username: newUsername, full_name: newFullName, is_admin: user.is_admin },
       JWT_SECRET,
       { expiresIn: '30d' }
     );
-    res.json({ token, user: { username: user.username, full_name: newFullName, is_admin: user.is_admin } });
+    res.json({ token, user: { username: newUsername, full_name: newFullName, is_admin: user.is_admin } });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'Erreur serveur' });
