@@ -244,9 +244,10 @@ body {
 .date-res-dot { display:inline-block; width:6px; height:6px; border-radius:50%; background:#f87171; margin-left:6px; vertical-align:middle; }
 
 /* Popup calendrier */
-.cal-popup-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.45); display:none; align-items:flex-end; justify-content:center; z-index:200; }
-.cal-popup-overlay.show { display:flex; }
-.cal-popup { background:white; width:100%; max-width:420px; border-radius:22px 22px 0 0; padding:18px 16px 22px; max-height:85vh; overflow-y:auto; }
+.cal-popup-overlay { position:fixed; inset:0; background:rgba(0,0,0,0); display:flex; align-items:flex-end; justify-content:center; z-index:200; visibility:hidden; opacity:0; pointer-events:none; transition:background .2s ease, opacity .2s ease; }
+.cal-popup-overlay.show { visibility:visible; opacity:1; pointer-events:auto; background:rgba(0,0,0,0.45); }
+.cal-popup { background:white; width:100%; max-width:420px; border-radius:22px 22px 0 0; padding:18px 16px 22px; max-height:85vh; overflow-y:auto; transform:translateY(30px); transition:transform .25s ease; }
+.cal-popup-overlay.show .cal-popup { transform:translateY(0); }
 .cal-popup-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
 .cal-popup-monthbtn { font-size:16px; font-weight:700; color:#1f2937; background:#f3f4f6; border:none; padding:8px 14px; border-radius:10px; cursor:pointer; text-transform:capitalize; }
 .cal-popup-nav { background:#fff1ec; border:none; color:#ff7a5c; width:34px; height:34px; border-radius:10px; font-size:16px; font-weight:700; cursor:pointer; }

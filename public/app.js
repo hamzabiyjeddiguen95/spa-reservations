@@ -358,23 +358,11 @@ function renderCalPopup() {
   }
 }
 
-async function renderPopupMonthDays() {
+const datesCache = {};
+
+function buildDaysHtml(gridStart, month, datesSet) {
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const todayStr2 = fmtDate(today);
-  const year = popupViewDate.getFullYear(), month = popupViewDate.getMonth();
-  const firstDay = new Date(year, month, 1);
-  const gridStart = new Date(firstDay);
-  gridStart.setDate(1 - firstDay.getDay());
-  const rangeStart = fmtDate(gridStart);
-  const rangeEndDate = new Date(gridStart); rangeEndDate.setDate(gridStart.getDate() + 41);
-  const rangeEnd = fmtDate(rangeEndDate);
-
-  let datesSet = new Set();
-  try {
-    const res = await authFetch(`${API}/api/reservations-dates?start=${rangeStart}&end=${rangeEnd}`);
-    datesSet = new Set(await res.json());
-  } catch (e) { /* ignore */ }
-
   let html = '';
   for (let i = 0; i < 42; i++) {
     const d = new Date(gridStart);
@@ -383,7 +371,7 @@ async function renderPopupMonthDays() {
     const isOtherMonth = d.getMonth() !== month;
     const isSel = ds === currentDate;
     const isToday = ds === todayStr2;
-    const hasRes = datesSet.has(ds);
+    const hasRes = datesSet ? datesSet.has(ds) : false;
     let cls = 'cal-popup-day';
     if (isOtherMonth) cls += ' otherm';
     if (isSel) cls += ' selected';
@@ -392,9 +380,11 @@ async function renderPopupMonthDays() {
       (hasRes ? '<div class="pd-dot"></div>' : '<div style="height:5px;"></div>') +
     '</div>';
   }
-  const el = $('calPopupDays');
-  el.innerHTML = html;
-  el.querySelectorAll('.cal-popup-day').forEach((day) => {
+  return html;
+}
+
+function bindPopupDayClicks() {
+  $('calPopupDays').querySelectorAll('.cal-popup-day').forEach((day) => {
     day.addEventListener('click', () => {
       selectDate(day.dataset.date);
       closeCalPopup();
@@ -402,34 +392,79 @@ async function renderPopupMonthDays() {
   });
 }
 
-async function renderPopupYear() {
-  const year = popupViewDate.getFullYear();
-  let monthsWithRes = new Set();
-  try {
-    const res = await authFetch(`${API}/api/reservations-dates?start=${year}-01-01&end=${year}-12-31`);
-    const list = await res.json();
-    monthsWithRes = new Set(list.map((ds) => ds.slice(0, 7)));
-  } catch (e) { /* ignore */ }
+function renderPopupMonthDays() {
+  const year = popupViewDate.getFullYear(), month = popupViewDate.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const gridStart = new Date(firstDay);
+  gridStart.setDate(1 - firstDay.getDay());
+  const rangeStart = fmtDate(gridStart);
+  const rangeEndDate = new Date(gridStart); rangeEndDate.setDate(gridStart.getDate() + 41);
+  const rangeEnd = fmtDate(rangeEndDate);
+  const cacheKey = rangeStart + '_' + rangeEnd;
 
-  let html = '';
+  // Affichage immediat (avec le cache si deja connu, sinon sans les points pour l'instant)
+  const el = $('calPopupDays');
+  el.innerHTML = buildDaysHtml(gridStart, month, datesCache[cacheKey]);
+  bindPopupDayClicks();
+
+  if (datesCache[cacheKey]) return; // deja en cache, pas besoin de refaire la requete
+
+  authFetch(`${API}/api/reservations-dates?start=${rangeStart}&end=${rangeEnd}`)
+    .then((res) => res.json())
+    .then((list) => {
+      datesCache[cacheKey] = new Set(list);
+      // Ne mettre a jour que si on est toujours sur ce meme mois
+      if (popupMode === 'month' && popupViewDate.getFullYear() === year && popupViewDate.getMonth() === month) {
+        el.innerHTML = buildDaysHtml(gridStart, month, datesCache[cacheKey]);
+        bindPopupDayClicks();
+      }
+    })
+    .catch(() => {});
+}
+
+function buildYearHtml(year, monthsWithRes) {
   const curYear = new Date(currentDate + 'T00:00:00').getFullYear();
+  let html = '';
   for (let m = 0; m < 12; m++) {
     const ym = year + '-' + String(m + 1).padStart(2, '0');
     const isSel = m === popupViewDate.getMonth() && year === curYear;
     html += '<div class="cal-popup-yearmonth' + (isSel ? ' selected' : '') + '" data-month="' + m + '">' +
       MOIS_FR[m] +
-      (monthsWithRes.has(ym) ? '<div class="ym-dot"></div>' : '<div style="height:9px;"></div>') +
+      (monthsWithRes && monthsWithRes.has(ym) ? '<div class="ym-dot"></div>' : '<div style="height:9px;"></div>') +
     '</div>';
   }
-  const el = $('calPopupYear');
-  el.innerHTML = html;
-  el.querySelectorAll('.cal-popup-yearmonth').forEach((div) => {
+  return html;
+}
+
+function bindYearClicks(year) {
+  $('calPopupYear').querySelectorAll('.cal-popup-yearmonth').forEach((div) => {
     div.addEventListener('click', () => {
       popupViewDate = new Date(year, parseInt(div.dataset.month, 10), 1);
       popupMode = 'month';
       renderCalPopup();
     });
   });
+}
+
+function renderPopupYear() {
+  const year = popupViewDate.getFullYear();
+  const cacheKey = 'year_' + year;
+  const el = $('calPopupYear');
+  el.innerHTML = buildYearHtml(year, datesCache[cacheKey]);
+  bindYearClicks(year);
+
+  if (datesCache[cacheKey]) return;
+
+  authFetch(`${API}/api/reservations-dates?start=${year}-01-01&end=${year}-12-31`)
+    .then((res) => res.json())
+    .then((list) => {
+      datesCache[cacheKey] = new Set(list.map((ds) => ds.slice(0, 7)));
+      if (popupMode === 'year' && popupViewDate.getFullYear() === year) {
+        el.innerHTML = buildYearHtml(year, datesCache[cacheKey]);
+        bindYearClicks(year);
+      }
+    })
+    .catch(() => {});
 }
 
 // ---------- Auth ----------
