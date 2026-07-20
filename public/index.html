@@ -22,12 +22,32 @@
 <!-- ============ ECRAN PRINCIPAL ============ -->
 <div id="mainScreen" class="screen hidden">
   <header class="topbar">
-    <button id="prevDay" class="nav-btn">‹</button>
-    <input id="datePicker" type="date">
-    <button id="nextDay" class="nav-btn">›</button>
     <span id="userLabel" class="user-label"></span>
     <button id="logoutBtn" class="logout-btn">Deconnexion</button>
   </header>
+
+  <div class="datebar">
+    <button class="nav-btn2" id="prevDayBtn">‹</button>
+    <div class="date-wrap">
+      <div class="date-display" id="dateDisplay"></div>
+    </div>
+    <button class="nav-btn2" id="nextDayBtn">›</button>
+    <button class="today-btn2" id="todayBtn">Aujourd'hui</button>
+  </div>
+
+  <div class="cal-popup-overlay" id="calPopupOverlay">
+    <div class="cal-popup">
+      <div class="cal-popup-header">
+        <button class="cal-popup-monthbtn" id="calPopupMonthBtn"></button>
+        <div style="display:flex;gap:6px;">
+          <button class="cal-popup-nav" id="calPopupPrev">&lsaquo;</button>
+          <button class="cal-popup-nav" id="calPopupNext">&rsaquo;</button>
+          <button class="cal-popup-close" id="calPopupClose">&times;</button>
+        </div>
+      </div>
+      <div id="calPopupBody"></div>
+    </div>
+  </div>
 
   <div id="moveBanner" class="hidden" style="background:#fff3cd;color:#7a5c00;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;font-size:14px;">
     <span>Touche la case de destination...</span>
@@ -58,7 +78,8 @@
     <h2>Massage inclus</h2>
     <p class="sub" id="includedSub"></p>
     <select id="fIncludedMassage"></select>
-    <select id="fIncludedRoom"></select>
+    <div id="fIncludedRoomList" style="margin-bottom:10px;"></div>
+    <div id="includedErrMsg" style="color:#dc2626;font-size:13px;margin-bottom:10px;"></div>
     <div class="modal-actions">
       <button id="includedAddBtn" class="btn-primary">Ajouter a l'heure suivante</button>
       <button id="includedSkipBtn" class="btn-secondary">Passer</button>
@@ -100,7 +121,6 @@
       </select>
     </div>
     <select id="fOrigine">
-      <option value="">Etranger ou Arabe</option>
       <option value="etranger">Etranger</option>
       <option value="arabe">Arabe</option>
     </select>
@@ -116,7 +136,7 @@
       <button type="button" id="gratuitBtn" class="btn-secondary" style="margin:0;">Gratuit</button>
     </div>
     <input id="fRemise" type="number" min="0" step="0.01" placeholder="Remise (dh)">
-    <input id="fDuration" type="number" min="1" value="1" placeholder="Duree (h)">
+    <input id="fDuration" type="number" min="1" value="1" placeholder="Duree (h)" style="display:none;">
     <input id="fStaff" type="text" placeholder="Extras qui ont travaille (ex: Nawal, Mouna)">
     <textarea id="fNote" placeholder="Note (visible dans le tableau)"></textarea>
     <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:14px;">

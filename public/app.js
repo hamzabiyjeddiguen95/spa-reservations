@@ -17,12 +17,26 @@ let reservations = [];
 let selectedRoomId = null;
 let selectedHour = null;
 let editingResId = null;
+let currentDate = todayStr();
+let popupViewDate = null;
+let popupMode = 'month'; // 'month' ou 'year'
 
 const $ = (id) => document.getElementById(id);
+const MOIS_FR = ['janvier','fevrier','mars','avril','mai','juin','juillet','aout','septembre','octobre','novembre','decembre'];
+const JOURS_FR = ['dim','lun','mar','mer','jeu','ven','sam'];
+const JOURS_FR_LONG = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
+
+function todayStr() {
+  const d = new Date();
+  return d.toISOString().slice(0, 10);
+}
+
+function fmtDate(d) {
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
 
 // ---------- Init ----------
 function init() {
-  $('datePicker').value = todayStr();
   if (token && currentUser) {
     showMain();
   } else {
@@ -31,12 +45,31 @@ function init() {
 
   $('loginBtn').addEventListener('click', doLogin);
   $('logoutBtn').addEventListener('click', doLogout);
-  $('prevDay').addEventListener('click', () => shiftDay(-1));
-  $('nextDay').addEventListener('click', () => shiftDay(1));
-  $('datePicker').addEventListener('change', loadReservations);
   $('cancelResBtn').addEventListener('click', closeModal);
   $('saveResBtn').addEventListener('click', saveReservation);
   $('deleteResBtn').addEventListener('click', deleteReservation);
+  $('prevDayBtn').addEventListener('click', () => shiftCalendar(-1));
+  $('nextDayBtn').addEventListener('click', () => shiftCalendar(1));
+  $('todayBtn').addEventListener('click', goToday);
+  $('dateDisplay').addEventListener('click', openCalPopup);
+  $('calPopupClose').addEventListener('click', closeCalPopup);
+  $('calPopupOverlay').addEventListener('click', (e) => {
+    if (e.target.id === 'calPopupOverlay') closeCalPopup();
+  });
+  $('calPopupMonthBtn').addEventListener('click', () => {
+    popupMode = popupMode === 'month' ? 'year' : 'month';
+    renderCalPopup();
+  });
+  $('calPopupPrev').addEventListener('click', () => {
+    if (popupMode === 'month') popupViewDate.setMonth(popupViewDate.getMonth() - 1);
+    else popupViewDate.setFullYear(popupViewDate.getFullYear() - 1);
+    renderCalPopup();
+  });
+  $('calPopupNext').addEventListener('click', () => {
+    if (popupMode === 'month') popupViewDate.setMonth(popupViewDate.getMonth() + 1);
+    else popupViewDate.setFullYear(popupViewDate.getFullYear() + 1);
+    renderCalPopup();
+  });
   $('addHourBtn').addEventListener('click', () => {
     if (hoursMax < 21) {
       hoursMax += 1;
@@ -126,7 +159,7 @@ async function doMove(room, hour) {
     const res = await authFetch(`${API}/api/reservations/${resId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ room_id: room.id, hour, date: $('datePicker').value }),
+      body: JSON.stringify({ room_id: room.id, hour, date: currentDate }),
     });
     if (!res.ok) {
       const data = await res.json();
@@ -163,7 +196,7 @@ async function doPaste(room, hour) {
       body: JSON.stringify({
         room_id: room.id,
         service_id: data.service_id,
-        date: $('datePicker').value,
+        date: currentDate,
         hour,
         duration: data.duration,
         client_type: data.client_type,
@@ -187,6 +220,7 @@ async function doPaste(room, hour) {
     }
     const savedRes = await res.json();
     await loadReservations();
+    renderCalendar();
     currentRoom = room;
     currentHour = hour;
     selectedRoomId = room.id;
@@ -200,16 +234,132 @@ async function doPaste(room, hour) {
   }
 }
 
-function todayStr() {
-  const d = new Date();
-  return d.toISOString().slice(0, 10);
+// ---------- Calendrier ----------
+// ---------- Calendrier ----------
+function renderCalendar() {
+  const d = new Date(currentDate + 'T00:00:00');
+  const label = JOURS_FR_LONG[d.getDay()] + ' ' + d.getDate() + ' ' + MOIS_FR[d.getMonth()] + ' ' + d.getFullYear();
+  const hasResToday = reservations.length > 0;
+  $('dateDisplay').innerHTML = label + (hasResToday ? '<span class="date-res-dot"></span>' : '');
 }
 
-function shiftDay(delta) {
-  const d = new Date($('datePicker').value);
-  d.setDate(d.getDate() + delta);
-  $('datePicker').value = d.toISOString().slice(0, 10);
+function selectDate(ds) {
+  currentDate = ds;
+  renderCalendar();
   loadReservations();
+}
+
+function shiftCalendar(days) {
+  const d = new Date(currentDate + 'T00:00:00');
+  d.setDate(d.getDate() + days);
+  currentDate = fmtDate(d);
+  renderCalendar();
+  loadReservations();
+}
+
+function goToday() {
+  currentDate = todayStr();
+  renderCalendar();
+  loadReservations();
+}
+
+// ---------- Popup calendrier (mois / annee) ----------
+function openCalPopup() {
+  popupViewDate = new Date(currentDate + 'T00:00:00');
+  popupMode = 'month';
+  $('calPopupOverlay').classList.add('show');
+  renderCalPopup();
+}
+
+function closeCalPopup() {
+  $('calPopupOverlay').classList.remove('show');
+}
+
+function renderCalPopup() {
+  $('calPopupMonthBtn').textContent = MOIS_FR[popupViewDate.getMonth()] + ' ' + popupViewDate.getFullYear();
+  const body = $('calPopupBody');
+  if (popupMode === 'month') {
+    body.innerHTML = '<div class="cal-popup-dows">' + JOURS_FR.map((j) => '<span>' + j + '</span>').join('') + '</div>' +
+      '<div class="cal-popup-days" id="calPopupDays"></div>';
+    renderPopupMonthDays();
+  } else {
+    body.innerHTML = '<div class="cal-popup-yeargrid" id="calPopupYear"></div>';
+    renderPopupYear();
+  }
+}
+
+async function renderPopupMonthDays() {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const todayStr2 = fmtDate(today);
+  const year = popupViewDate.getFullYear(), month = popupViewDate.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const gridStart = new Date(firstDay);
+  gridStart.setDate(1 - firstDay.getDay());
+  const rangeStart = fmtDate(gridStart);
+  const rangeEndDate = new Date(gridStart); rangeEndDate.setDate(gridStart.getDate() + 41);
+  const rangeEnd = fmtDate(rangeEndDate);
+
+  let datesSet = new Set();
+  try {
+    const res = await authFetch(`${API}/api/reservations-dates?start=${rangeStart}&end=${rangeEnd}`);
+    datesSet = new Set(await res.json());
+  } catch (e) { /* ignore */ }
+
+  let html = '';
+  for (let i = 0; i < 42; i++) {
+    const d = new Date(gridStart);
+    d.setDate(gridStart.getDate() + i);
+    const ds = fmtDate(d);
+    const isOtherMonth = d.getMonth() !== month;
+    const isSel = ds === currentDate;
+    const isToday = ds === todayStr2;
+    const hasRes = datesSet.has(ds);
+    let cls = 'cal-popup-day';
+    if (isOtherMonth) cls += ' otherm';
+    if (isSel) cls += ' selected';
+    if (isToday) cls += ' today';
+    html += '<div class="' + cls + '" data-date="' + ds + '">' + d.getDate() +
+      (hasRes ? '<div class="pd-dot"></div>' : '<div style="height:5px;"></div>') +
+    '</div>';
+  }
+  const el = $('calPopupDays');
+  el.innerHTML = html;
+  el.querySelectorAll('.cal-popup-day').forEach((day) => {
+    day.addEventListener('click', () => {
+      selectDate(day.dataset.date);
+      closeCalPopup();
+    });
+  });
+}
+
+async function renderPopupYear() {
+  const year = popupViewDate.getFullYear();
+  let monthsWithRes = new Set();
+  try {
+    const res = await authFetch(`${API}/api/reservations-dates?start=${year}-01-01&end=${year}-12-31`);
+    const list = await res.json();
+    monthsWithRes = new Set(list.map((ds) => ds.slice(0, 7)));
+  } catch (e) { /* ignore */ }
+
+  let html = '';
+  const curYear = new Date(currentDate + 'T00:00:00').getFullYear();
+  for (let m = 0; m < 12; m++) {
+    const ym = year + '-' + String(m + 1).padStart(2, '0');
+    const isSel = m === popupViewDate.getMonth() && year === curYear;
+    html += '<div class="cal-popup-yearmonth' + (isSel ? ' selected' : '') + '" data-month="' + m + '">' +
+      MOIS_FR[m] +
+      (monthsWithRes.has(ym) ? '<div class="ym-dot"></div>' : '<div style="height:9px;"></div>') +
+    '</div>';
+  }
+  const el = $('calPopupYear');
+  el.innerHTML = html;
+  el.querySelectorAll('.cal-popup-yearmonth').forEach((div) => {
+    div.addEventListener('click', () => {
+      popupViewDate = new Date(year, parseInt(div.dataset.month, 10), 1);
+      popupMode = 'month';
+      renderCalPopup();
+    });
+  });
 }
 
 // ---------- Auth ----------
@@ -259,6 +409,7 @@ function showMain() {
   $('loginScreen').classList.add('hidden');
   $('mainScreen').classList.remove('hidden');
   $('userLabel').textContent = currentUser.full_name;
+  renderCalendar();
   loadRoomsAndReservations();
 }
 
@@ -282,6 +433,7 @@ async function loadRoomsAndReservations() {
   populateServiceSelect();
   populateSectionFilter();
   await loadReservations();
+  renderCalendar();
 }
 
 let selectedSection = null;
@@ -357,7 +509,7 @@ function recalcPrice() {
 }
 
 async function loadReservations() {
-  const date = $('datePicker').value;
+  const date = currentDate;
   const res = await authFetch(`${API}/api/reservations?date=${date}`);
   reservations = await res.json();
   renderGrid();
@@ -569,6 +721,7 @@ function renderSlotList() {
         if (!confirm('Supprimer ce client ?')) return;
         await authFetch(`${API}/api/reservations/${btn.dataset.del}`, { method: 'DELETE' });
         await loadReservations();
+        renderCalendar();
         renderSlotList();
       };
     });
@@ -646,7 +799,7 @@ async function saveReservation() {
   const payload = {
     room_id: selectedRoomId,
     service_id: $('fService').value || null,
-    date: $('datePicker').value,
+    date: currentDate,
     hour: selectedHour,
     duration: parseInt($('fDuration').value, 10) || 1,
     client_type: $('fClient').value.trim(),
@@ -664,6 +817,7 @@ async function saveReservation() {
   };
 
   try {
+    const isNew = !editingResId;
     let res;
     if (editingResId) {
       res = await authFetch(`${API}/api/reservations/${editingResId}`, {
@@ -687,14 +841,17 @@ async function saveReservation() {
     editingResId = null;
     const savedRes = await res.json().catch(() => null);
     await loadReservations();
+    renderCalendar();
     closeModal();
 
-    const svc = savedRes ? services.find((s) => s.id === savedRes.service_id) : null;
-    if (svc && (svc.name === 'Taziri' || svc.name === 'Royal')) {
-      if (currentRoom.section === 'HAMMAM') {
-        offerIncludedSession(savedRes, svc, 'massage');
-      } else {
-        offerIncludedSession(savedRes, svc, 'hammam');
+    if (isNew) {
+      const svc = savedRes ? services.find((s) => s.id === savedRes.service_id) : null;
+      if (svc && (svc.name === 'Taziri' || svc.name === 'Royal')) {
+        if (currentRoom.section === 'HAMMAM') {
+          offerIncludedSession(savedRes, svc, 'massage');
+        } else {
+          offerIncludedSession(savedRes, svc, 'hammam');
+        }
       }
     }
   } catch (e) {
@@ -708,26 +865,68 @@ const PACK_MASSAGES = {
   Royal: ['Relaxant', 'Tonique', 'Dos', 'Californien'],
 };
 
+let selectedIncludedRoomId = null;
+
+function roomIsFull(room, hourReservations, nb) {
+  const dejaPris = hourReservations
+    .filter((r) => r.room_id === room.id)
+    .reduce((s, r) => s + (r.nb_personnes || 0), 0);
+  return dejaPris + (nb || 1) > room.capacity_base;
+}
+
+async function renderIncludedRoomList(candidateRooms, hour, nb) {
+  const wrap = $('fIncludedRoomList');
+  wrap.innerHTML = '<p style="font-size:13px;color:#6b7280;">Chargement...</p>';
+  const res = await authFetch(`${API}/api/reservations?date=${currentDate}`);
+  const dayReservations = await res.json();
+  const hourReservations = dayReservations.filter((r) => r.hour === hour);
+
+  wrap.innerHTML = candidateRooms.map((r) => {
+    const full = roomIsFull(r, hourReservations, nb);
+    return `<div class="room-option" data-room-id="${r.id}" data-full="${full}" style="display:flex;justify-content:space-between;align-items:center;padding:10px;border:1px solid #e5e7eb;border-radius:10px;margin-bottom:6px;cursor:${full ? 'not-allowed' : 'pointer'};opacity:${full ? '0.5' : '1'};">
+      <span>${r.section} - ${r.name}</span>
+      <span style="font-weight:800;color:${full ? '#dc2626' : '#16a34a'};">${full ? 'Ferme' : 'Ouvert'}</span>
+    </div>`;
+  }).join('');
+
+  wrap.querySelectorAll('.room-option').forEach((el) => {
+    if (el.dataset.full === 'true') return;
+    el.addEventListener('click', () => {
+      selectedIncludedRoomId = parseInt(el.dataset.roomId, 10);
+      wrap.querySelectorAll('.room-option').forEach((x) => x.style.outline = 'none');
+      el.style.outline = '2px solid #ff7a5c';
+    });
+  });
+  const firstOpen = candidateRooms.find((r) => !roomIsFull(r, hourReservations, nb));
+  selectedIncludedRoomId = firstOpen ? firstOpen.id : null;
+  if (firstOpen) {
+    const firstEl = wrap.querySelector(`[data-room-id="${firstOpen.id}"]`);
+    if (firstEl) firstEl.style.outline = '2px solid #ff7a5c';
+  }
+}
+
 function offerIncludedSession(savedRes, packSvc, direction) {
   $('includedModal').dataset.direction = direction;
   $('includedModal').dataset.baseRes = JSON.stringify(savedRes);
   $('includedModal').dataset.packName = packSvc.name;
+  $('includedErrMsg').textContent = '';
+  const targetHour = savedRes.hour + 1;
 
   if (direction === 'massage') {
     // Deja en hammam -> proposer le massage a l'heure suivante
     const allowedNames = PACK_MASSAGES[packSvc.name] || [];
     const options = services.filter((s) => s.category === 'massage' && allowedNames.includes(s.name));
     const massageRooms = rooms.filter((r) => r.section === 'TAMAZIGHT' || r.section === 'TIFAWIN' || r.section === 'TANIRT' || r.section === 'TAFOKT');
-    $('includedSub').textContent = `${packSvc.name} inclut un massage a ${savedRes.hour + 1}h00 - choisis lequel et la chambre.`;
+    $('includedSub').textContent = `${packSvc.name} inclut un massage a ${targetHour}h00 - choisis lequel et la chambre.`;
     $('fIncludedMassage').classList.remove('hidden');
     $('fIncludedMassage').innerHTML = options.map((s) => `<option value="${s.id}">${s.name}</option>`).join('');
-    $('fIncludedRoom').innerHTML = massageRooms.map((r) => `<option value="${r.id}">${r.section} - ${r.name}</option>`).join('');
+    renderIncludedRoomList(massageRooms, targetHour, savedRes.nb_personnes);
   } else {
     // Deja en massage -> proposer le hammam a l'heure suivante (meme pack, pas de choix de type)
     const hammamRooms = rooms.filter((r) => r.section === 'HAMMAM');
-    $('includedSub').textContent = `${packSvc.name} inclut le hammam a ${savedRes.hour + 1}h00 - choisis la chambre.`;
+    $('includedSub').textContent = `${packSvc.name} inclut le hammam a ${targetHour}h00 - choisis la chambre.`;
     $('fIncludedMassage').classList.add('hidden');
-    $('fIncludedRoom').innerHTML = hammamRooms.map((r) => `<option value="${r.id}">${r.section} - ${r.name}</option>`).join('');
+    renderIncludedRoomList(hammamRooms, targetHour, savedRes.nb_personnes);
   }
   $('includedModal').classList.remove('hidden');
 }
@@ -736,7 +935,11 @@ async function confirmIncludedMassage() {
   const modal = $('includedModal');
   const direction = modal.dataset.direction;
   const base = JSON.parse(modal.dataset.baseRes);
-  const targetRoomId = parseInt($('fIncludedRoom').value, 10);
+  const targetRoomId = selectedIncludedRoomId;
+  if (!targetRoomId) {
+    $('includedErrMsg').textContent = 'Choisis une chambre ouverte.';
+    return;
+  }
   const serviceId = direction === 'massage'
     ? parseInt($('fIncludedMassage').value, 10)
     : base.service_id; // meme pack (Taziri/Royal) pour la partie hammam
@@ -767,6 +970,7 @@ async function confirmIncludedMassage() {
     }
     $('includedModal').classList.add('hidden');
     await loadReservations();
+    renderCalendar();
   } catch (e) {
     alert('Erreur de connexion');
   }
@@ -779,6 +983,7 @@ async function deleteReservation() {
   $('resForm').classList.add('hidden');
   editingResId = null;
   await loadReservations();
+  renderCalendar();
   renderSlotList();
 }
 

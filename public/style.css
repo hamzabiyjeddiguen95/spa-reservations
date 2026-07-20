@@ -226,3 +226,33 @@ body {
 .btn-secondary { background: #f3f4f6; color: #374151; border: none; padding: 14px; border-radius: 10px; font-size: 15px; }
 .chip { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; padding: 8px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; }
 .chip.active { background: #ff7a5c; color: white; border-color: #ff7a5c; }
+
+/* ---------- Barre de date simple ---------- */
+.datebar { display:flex; align-items:center; gap:8px; background:white; border-radius:16px; padding:10px 12px; margin:12px; box-shadow:0 2px 8px rgba(0,0,0,0.06); }
+.datebar .nav-btn2 { background:#fff1ec; border:none; color:#ff7a5c; width:36px; height:36px; border-radius:10px; font-size:18px; font-weight:700; cursor:pointer; flex:none; }
+.datebar .date-wrap { flex:1; position:relative; }
+.datebar .date-display { width:100%; text-align:center; font-size:15px; font-weight:700; color:#1f2937; text-transform:capitalize; padding:8px 4px; background:#f9fafb; border-radius:10px; cursor:pointer; }
+.datebar .today-btn2 { background:#ff7a5c; color:white; border:none; border-radius:10px; padding:0 14px; height:36px; font-size:12.5px; font-weight:600; cursor:pointer; flex:none; white-space:nowrap; }
+.date-res-dot { display:inline-block; width:6px; height:6px; border-radius:50%; background:#f87171; margin-left:6px; vertical-align:middle; }
+
+/* Popup calendrier */
+.cal-popup-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.45); display:none; align-items:flex-end; justify-content:center; z-index:200; }
+.cal-popup-overlay.show { display:flex; }
+.cal-popup { background:white; width:100%; max-width:420px; border-radius:22px 22px 0 0; padding:18px 16px 22px; max-height:85vh; overflow-y:auto; }
+.cal-popup-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+.cal-popup-monthbtn { font-size:16px; font-weight:700; color:#1f2937; background:#f3f4f6; border:none; padding:8px 14px; border-radius:10px; cursor:pointer; text-transform:capitalize; }
+.cal-popup-nav { background:#fff1ec; border:none; color:#ff7a5c; width:34px; height:34px; border-radius:10px; font-size:16px; font-weight:700; cursor:pointer; }
+.cal-popup-close { background:#f3f4f6; border:none; color:#6b7280; width:34px; height:34px; border-radius:10px; font-size:16px; cursor:pointer; }
+.cal-popup-dows { display:grid; grid-template-columns:repeat(7,1fr); text-align:center; margin-bottom:8px; }
+.cal-popup-dows span { font-size:11px; color:#9ca3af; font-weight:600; text-transform:uppercase; }
+.cal-popup-days { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; }
+.cal-popup-day { aspect-ratio:1; border-radius:50%; display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:13.5px; font-weight:600; color:#374151; cursor:pointer; position:relative; }
+.cal-popup-day.otherm { color:#d1d5db; }
+.cal-popup-day.today:not(.selected) { box-shadow:inset 0 0 0 2px #22c55e; }
+.cal-popup-day.selected { background:linear-gradient(135deg,#ff7a5c,#ffb347); color:white; }
+.cal-popup-day .pd-dot { width:5px; height:5px; border-radius:50%; background:#ef4444; margin-top:2px; }
+.cal-popup-day.selected .pd-dot { background:white; }
+.cal-popup-yeargrid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+.cal-popup-yearmonth { background:#f9fafb; border-radius:12px; padding:14px 4px; text-align:center; font-size:13.5px; font-weight:600; color:#374151; cursor:pointer; text-transform:capitalize; }
+.cal-popup-yearmonth.selected { background:linear-gradient(135deg,#ff7a5c,#ffb347); color:white; }
+.cal-popup-yearmonth .ym-dot { width:5px; height:5px; border-radius:50%; background:#ef4444; margin:5px auto 0; }

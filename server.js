@@ -77,6 +77,17 @@ app.post('/api/users', async (req, res) => {
 });
 
 // ---------- Routes: Rooms ----------
+// ---------- Routes: Dates avec reservations (pour le calendrier) ----------
+app.get('/api/reservations-dates', auth, async (req, res) => {
+  const { start, end } = req.query;
+  if (!start || !end) return res.status(400).json({ error: 'start et end requis (YYYY-MM-DD)' });
+  const { rows } = await pool.query(
+    'SELECT DISTINCT date FROM reservations WHERE date BETWEEN $1 AND $2',
+    [start, end]
+  );
+  res.json(rows.map((r) => (r.date instanceof Date ? r.date.toISOString().slice(0, 10) : r.date)));
+});
+
 app.get('/api/rooms', auth, async (req, res) => {
   const { rows } = await pool.query(
     'SELECT * FROM rooms WHERE active=true ORDER BY sort_order ASC, id ASC'
