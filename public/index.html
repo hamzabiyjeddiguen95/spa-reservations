@@ -82,7 +82,26 @@
     <div id="includedErrMsg" style="color:#dc2626;font-size:13px;margin-bottom:10px;"></div>
     <div class="modal-actions">
       <button id="includedAddBtn" class="btn-primary">Ajouter a l'heure suivante</button>
-      <button id="includedSkipBtn" class="btn-secondary">Passer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL DIVISER UN GROUPE ============ -->
+<div id="splitModal" class="modal hidden">
+  <div class="modal-content">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+      <h2>Diviser le groupe</h2>
+      <button id="splitCloseBtn" style="background:none;border:none;font-size:20px;color:#6b7280;">&times;</button>
+    </div>
+    <p class="sub" id="splitSub"></p>
+    <label style="display:block;font-size:13px;color:#6b7280;margin-bottom:6px;">Quel nom sortir du groupe ?</label>
+    <select id="fSplitName"></select>
+    <label style="display:block;font-size:13px;color:#6b7280;margin-bottom:6px;">Nouveau soin pour cette personne</label>
+    <select id="fSplitService"></select>
+    <div id="splitErrMsg" style="color:#dc2626;font-size:13px;margin-bottom:10px;"></div>
+    <div class="modal-actions">
+      <button id="splitConfirmBtn" class="btn-primary">Diviser</button>
+      <button id="splitCancelBtn" class="btn-secondary">Annuler</button>
     </div>
   </div>
 </div>
@@ -120,6 +139,7 @@
         <option value="femme">Femme</option>
       </select>
     </div>
+    <label style="display:block;font-size:13px;color:#6b7280;margin-bottom:6px;">Est-ce que le client est etranger ou arabe ?</label>
     <select id="fOrigine">
       <option value="etranger">Etranger</option>
       <option value="arabe">Arabe</option>
@@ -131,10 +151,13 @@
     <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:14px;">
       <input id="fTaxi" type="checkbox" style="width:auto;margin:0;"> Taxi envoye pour ce client
     </label>
-    <div class="row2">
-      <input id="fPrix" type="number" min="0" step="0.01" placeholder="Prix (dh)">
-      <button type="button" id="gratuitBtn" class="btn-secondary" style="margin:0;">Gratuit</button>
-    </div>
+    <input id="fPrix" type="number" min="0" step="0.01" placeholder="Prix (dh)">
+    <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:14px;">
+      <input id="fGratuit" type="checkbox" style="width:auto;margin:0;"> Gratuit
+    </label>
+    <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:14px;">
+      <input id="fCarteCadeaux" type="checkbox" style="width:auto;margin:0;"> Carte cadeaux (deja payee)
+    </label>
     <input id="fRemise" type="number" min="0" step="0.01" placeholder="Remise (dh)">
     <input id="fDuration" type="number" min="1" value="1" placeholder="Duree (h)" style="display:none;">
     <input id="fStaff" type="text" placeholder="Extras qui ont travaille (ex: Nawal, Mouna)">

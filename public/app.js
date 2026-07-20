@@ -17,6 +17,7 @@ let reservations = [];
 let selectedRoomId = null;
 let selectedHour = null;
 let editingResId = null;
+let ignoreNextClick = false;
 let currentDate = todayStr();
 let popupViewDate = null;
 let popupMode = 'month'; // 'month' ou 'year'
@@ -93,10 +94,28 @@ function init() {
   updateHoursLabel();
   $('cancelMoveBtn').addEventListener('click', cancelMove);
   $('cancelCopyBtn').addEventListener('click', cancelCopy);
-  $('includedSkipBtn').addEventListener('click', () => $('includedModal').classList.add('hidden'));
   $('includedAddBtn').addEventListener('click', confirmIncludedMassage);
-  $('gratuitBtn').addEventListener('click', () => {
-    $('fPrix').value = 0;
+  $('splitCloseBtn').addEventListener('click', closeSplitModal);
+  $('splitCancelBtn').addEventListener('click', closeSplitModal);
+  $('splitConfirmBtn').addEventListener('click', confirmSplit);
+  $('fGratuit').addEventListener('change', () => {
+    if ($('fGratuit').checked) {
+      $('fCarteCadeaux').checked = false;
+      $('fPrix').value = 0;
+      $('fPrix').disabled = true;
+    } else {
+      $('fPrix').disabled = false;
+    }
+    updateLivePreview();
+  });
+  $('fCarteCadeaux').addEventListener('change', () => {
+    if ($('fCarteCadeaux').checked) {
+      $('fGratuit').checked = false;
+      $('fPrix').value = 0;
+      $('fPrix').disabled = true;
+    } else {
+      $('fPrix').disabled = false;
+    }
     updateLivePreview();
   });
 
@@ -135,6 +154,55 @@ function init() {
     if (!resId || !room) return;
     moveMode = parseInt(resId, 10);
     await doMove(room, hour);
+  });
+
+  // Appui long (mobile) - appuyer n'importe ou sur la case (meme l'espace vide) pour deplacer
+  let pressTimer = null;
+  let pressStartX = 0, pressStartY = 0;
+  let longPressFired = false;
+
+  $('grid').addEventListener('touchstart', (e) => {
+    const cell = e.target.closest('.res-cell');
+    if (!cell) return;
+    const touch = e.touches[0];
+    pressStartX = touch.clientX;
+    pressStartY = touch.clientY;
+    longPressFired = false;
+    pressTimer = setTimeout(() => {
+      longPressFired = true;
+      const entryEl = e.target.closest('[data-res-id]');
+      let resId = entryEl ? parseInt(entryEl.dataset.resId, 10) : null;
+      if (!resId) {
+        const roomId = parseInt(cell.dataset.roomId, 10);
+        const hour = parseInt(cell.dataset.hour, 10);
+        const matches = reservations.filter((r) => r.room_id === roomId && r.hour === hour);
+        if (matches.length === 1) resId = matches[0].id;
+      }
+      if (resId) {
+        if (navigator.vibrate) navigator.vibrate(30);
+        startMove(resId);
+      }
+    }, 450);
+  }, { passive: true });
+
+  $('grid').addEventListener('touchmove', (e) => {
+    if (!pressTimer) return;
+    const touch = e.touches[0];
+    if (Math.abs(touch.clientX - pressStartX) > 10 || Math.abs(touch.clientY - pressStartY) > 10) {
+      clearTimeout(pressTimer);
+      pressTimer = null;
+    }
+  }, { passive: true });
+
+  $('grid').addEventListener('touchend', (e) => {
+    if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
+    if (longPressFired) {
+      ignoreNextClick = true;
+    }
+  });
+
+  $('grid').addEventListener('contextmenu', (e) => {
+    if (e.target.closest('.res-cell')) e.preventDefault();
   });
 }
 
@@ -276,7 +344,9 @@ function closeCalPopup() {
 }
 
 function renderCalPopup() {
-  $('calPopupMonthBtn').textContent = MOIS_FR[popupViewDate.getMonth()] + ' ' + popupViewDate.getFullYear();
+  $('calPopupMonthBtn').textContent = popupMode === 'year'
+    ? String(popupViewDate.getFullYear())
+    : MOIS_FR[popupViewDate.getMonth()] + ' ' + popupViewDate.getFullYear();
   const body = $('calPopupBody');
   if (popupMode === 'month') {
     body.innerHTML = '<div class="cal-popup-dows">' + JOURS_FR.map((j) => '<span>' + j + '</span>').join('') + '</div>' +
@@ -493,6 +563,11 @@ function formatDuree(minutes) {
 
 function recalcPrice() {
   const svc = services.find((s) => s.id == $('fService').value);
+  if (svc) $('fDuration').value = Math.max(1, Math.round(svc.duration_minutes / 60));
+  if ($('fGratuit').checked || $('fCarteCadeaux').checked) {
+    $('fPrix').value = 0;
+    return;
+  }
   const nb = parseInt($('fNbPersonnes').value, 10) || 1;
   const remise = parseFloat($('fRemise').value) || 0;
   if (svc) {
@@ -504,7 +579,6 @@ function recalcPrice() {
       total -= commission;
     }
     $('fPrix').value = Math.max(0, total);
-    $('fDuration').value = Math.max(1, Math.round(svc.duration_minutes / 60));
   }
 }
 
@@ -621,7 +695,7 @@ function renderGrid() {
             ${res.auberge ? `<div style="font-weight:700;color:${aubergeColor};">${escapeHtml(res.auberge)}</div>` : ''}
             ${res.auberge && res.sans_commission ? `<div style="font-weight:700;color:#7c3aed;">Sans commission</div>` : ''}
             <div class="res-client">${escapeHtml(res.client_type || '')}</div>
-            ${res.prix ? `<div class="res-prix">${res.prix} dh</div>` : ''}
+            ${res.carte_cadeaux ? '<div class="res-prix">Prix: carte cadeaux</div>' : (res.prix !== null && res.prix !== undefined && res.prix !== '' ? `<div class="res-prix">${Number(res.prix) === 0 ? 'Gratuit' : res.prix + ' dh'}</div>` : '')}
             ${res.remise && parseFloat(res.remise) > 0 ? `<div style="color:#7c3aed;font-size:10px;">Remise: ${res.remise} dh</div>` : ''}
             <div style="font-weight:800;color:#000;">${res.hour}H</div>
             ${res.staff_names ? `<div class="res-staff">${escapeHtml(res.staff_names)}</div>` : ''}
@@ -634,6 +708,7 @@ function renderGrid() {
       cell.dataset.hour = h;
       if (moveMode || copyMode) cell.classList.add('drop-target');
       cell.addEventListener('click', () => {
+        if (ignoreNextClick) { ignoreNextClick = false; return; }
         if (moveMode) {
           doMove(r, h);
         } else if (copyMode) {
@@ -696,12 +771,13 @@ function renderSlotList() {
       <div style="border:1px solid #e5e7eb;border-radius:10px;padding:10px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">
         <div>
           <div style="font-weight:800;color:${genreColor};">${res.nb_personnes || 1} ${escapeHtml(res.sexe || '')}${(res.nb_personnes || 1) > 1 ? 's' : ''}</div>
-          <div style="font-size:12px;color:#6b7280;">${res.origine ? escapeHtml(res.origine) + ' - ' : ''}${res.prix ? res.prix + ' dh - ' : ''}${escapeHtml(res.client_type || '')}${res.auberge ? ' - ' + escapeHtml(res.auberge) : ''}${res.staff_names ? ' - ' + escapeHtml(res.staff_names) : ''}${res.taxi ? ' - 🚕' : ''}</div>
+          <div style="font-size:12px;color:#6b7280;">${res.origine ? escapeHtml(res.origine) + ' - ' : ''}${res.carte_cadeaux ? 'Prix: carte cadeaux - ' : (res.prix !== null && res.prix !== undefined && res.prix !== '' ? (Number(res.prix) === 0 ? 'Gratuit - ' : res.prix + ' dh - ') : '')}${escapeHtml(res.client_type || '')}${res.auberge ? ' - ' + escapeHtml(res.auberge) : ''}${res.staff_names ? ' - ' + escapeHtml(res.staff_names) : ''}${res.taxi ? ' - 🚕' : ''}</div>
         </div>
-        <div style="display:flex;gap:6px;">
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
           <button data-edit="${res.id}" style="padding:6px 10px;">Modifier</button>
           <button data-move="${res.id}" style="padding:6px 10px;">Deplacer</button>
           <button data-copy="${res.id}" style="padding:6px 10px;">Copier</button>
+          ${(res.nb_personnes || 1) > 1 ? `<button data-split="${res.id}" style="padding:6px 10px;color:#7c3aed;">Diviser</button>` : ''}
           <button data-del="${res.id}" style="padding:6px 10px;color:#dc2626;">Suppr</button>
         </div>
       </div>
@@ -715,6 +791,9 @@ function renderSlotList() {
     });
     wrap.querySelectorAll('[data-copy]').forEach((btn) => {
       btn.onclick = () => startCopy(list.find((r) => r.id == btn.dataset.copy));
+    });
+    wrap.querySelectorAll('[data-split]').forEach((btn) => {
+      btn.onclick = () => openSplitModal(list.find((r) => r.id == btn.dataset.split));
     });
     wrap.querySelectorAll('[data-del]').forEach((btn) => {
       btn.onclick = async () => {
@@ -743,7 +822,10 @@ function showForm(existing) {
   $('fAuberge').value = existing ? existing.auberge || '' : '';
   $('fSansCommission').checked = existing ? !!existing.sans_commission : false;
   $('fTaxi').checked = existing ? !!existing.taxi : false;
-  $('fPrix').value = existing ? existing.prix || '' : '';
+  $('fCarteCadeaux').checked = existing ? !!existing.carte_cadeaux : false;
+  $('fGratuit').checked = existing ? (existing.prix === 0 && !existing.carte_cadeaux) : false;
+  $('fPrix').disabled = $('fGratuit').checked || $('fCarteCadeaux').checked;
+  $('fPrix').value = existing ? existing.prix ?? '' : '';
   $('fRemise').value = existing ? existing.remise || '' : '';
   $('fDuration').value = existing ? existing.duration || 1 : 1;
   $('fStaff').value = existing ? existing.staff_names || '' : '';
@@ -809,6 +891,7 @@ async function saveReservation() {
     auberge: $('fAuberge').value.trim(),
     sans_commission: $('fSansCommission').checked,
     taxi: $('fTaxi').checked,
+    carte_cadeaux: $('fCarteCadeaux').checked,
     prix: $('fPrix').value ? parseFloat($('fPrix').value) : null,
     remise: $('fRemise').value ? parseFloat($('fRemise').value) : 0,
     note: $('fNote').value.trim(),
@@ -883,25 +966,33 @@ async function renderIncludedRoomList(candidateRooms, hour, nb) {
 
   wrap.innerHTML = candidateRooms.map((r) => {
     const full = roomIsFull(r, hourReservations, nb);
-    return `<div class="room-option" data-room-id="${r.id}" data-full="${full}" style="display:flex;justify-content:space-between;align-items:center;padding:10px;border:1px solid #e5e7eb;border-radius:10px;margin-bottom:6px;cursor:${full ? 'not-allowed' : 'pointer'};opacity:${full ? '0.5' : '1'};">
+    return `<div class="room-option" data-room-id="${r.id}" data-full="${full}" style="display:flex;justify-content:space-between;align-items:center;padding:10px;border:1px solid #e5e7eb;border-left:3px solid transparent;border-radius:10px;margin-bottom:6px;cursor:${full ? 'not-allowed' : 'pointer'};opacity:${full ? '0.5' : '1'};">
       <span>${r.section} - ${r.name}</span>
       <span style="font-weight:800;color:${full ? '#dc2626' : '#16a34a'};">${full ? 'Ferme' : 'Ouvert'}</span>
     </div>`;
   }).join('');
 
+  function markSelected(el) {
+    wrap.querySelectorAll('.room-option').forEach((x) => {
+      x.style.borderLeftColor = 'transparent';
+      x.style.background = 'white';
+    });
+    el.style.borderLeftColor = '#ff7a5c';
+    el.style.background = '#fff5f2';
+  }
+
   wrap.querySelectorAll('.room-option').forEach((el) => {
     if (el.dataset.full === 'true') return;
     el.addEventListener('click', () => {
       selectedIncludedRoomId = parseInt(el.dataset.roomId, 10);
-      wrap.querySelectorAll('.room-option').forEach((x) => x.style.outline = 'none');
-      el.style.outline = '2px solid #ff7a5c';
+      markSelected(el);
     });
   });
   const firstOpen = candidateRooms.find((r) => !roomIsFull(r, hourReservations, nb));
   selectedIncludedRoomId = firstOpen ? firstOpen.id : null;
   if (firstOpen) {
     const firstEl = wrap.querySelector(`[data-room-id="${firstOpen.id}"]`);
-    if (firstEl) firstEl.style.outline = '2px solid #ff7a5c';
+    if (firstEl) markSelected(firstEl);
   }
 }
 
@@ -985,6 +1076,97 @@ async function deleteReservation() {
   await loadReservations();
   renderCalendar();
   renderSlotList();
+}
+
+// ---------- Diviser un groupe ----------
+let splitBaseRes = null;
+
+function splitNamesList(res) {
+  const raw = (res.client_type || res.staff_names || '').trim();
+  const names = raw.split(/[+,\/]/).map((n) => n.trim()).filter(Boolean);
+  return names.length ? names : ['Personne 1'];
+}
+
+function openSplitModal(res) {
+  splitBaseRes = res;
+  $('splitErrMsg').textContent = '';
+  $('splitSub').textContent = `${res.nb_personnes} ${res.sexe || ''}(s) - ${res.client_type || ''}`;
+  const names = splitNamesList(res);
+  $('fSplitName').innerHTML = names.map((n) => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
+  $('fSplitService').innerHTML = services.map((s) => `<option value="${s.id}">${s.name} (${s.category})</option>`).join('');
+  $('splitModal').classList.remove('hidden');
+}
+
+function closeSplitModal() {
+  $('splitModal').classList.add('hidden');
+  splitBaseRes = null;
+}
+
+async function confirmSplit() {
+  const res = splitBaseRes;
+  const chosenName = $('fSplitName').value;
+  const newServiceId = parseInt($('fSplitService').value, 10);
+  $('splitErrMsg').textContent = '';
+
+  const remainingNb = (res.nb_personnes || 1) - 1;
+  const names = splitNamesList(res).filter((n) => n !== chosenName);
+
+  try {
+    if (remainingNb <= 0) {
+      await authFetch(`${API}/api/reservations/${res.id}`, { method: 'DELETE' });
+    } else {
+      const updateRes = await authFetch(`${API}/api/reservations/${res.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          room_id: res.room_id, service_id: res.service_id, date: res.date, hour: res.hour,
+          duration: res.duration || 1, client_type: names.join('+'), nb_personnes: remainingNb,
+          sexe: res.sexe, origine: res.origine, auberge: res.auberge, sans_commission: res.sans_commission,
+          taxi: res.taxi, prix: res.prix, remise: res.remise, note: res.note, alerte: res.alerte,
+          staff_names: res.staff_names, carte_cadeaux: res.carte_cadeaux,
+        }),
+      });
+      if (!updateRes.ok) {
+        const d = await updateRes.json();
+        $('splitErrMsg').textContent = d.error || 'Erreur lors de la mise a jour du groupe.';
+        return;
+      }
+    }
+
+    const createRes = await authFetch(`${API}/api/reservations`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        room_id: res.room_id, service_id: newServiceId, date: res.date, hour: res.hour,
+        duration: 1, client_type: chosenName, nb_personnes: 1,
+        sexe: res.sexe, origine: res.origine, auberge: res.auberge, sans_commission: res.sans_commission,
+        taxi: false, prix: null, note: '', staff_names: '', carte_cadeaux: false,
+      }),
+    });
+    if (!createRes.ok) {
+      const d = await createRes.json();
+      $('splitErrMsg').textContent = d.error || 'Erreur lors de la creation de la nouvelle reservation.';
+      return;
+    }
+    const savedRes = await createRes.json().catch(() => null);
+
+    closeSplitModal();
+    await loadReservations();
+    renderCalendar();
+    renderSlotList();
+
+    const svc = savedRes ? services.find((s) => s.id === savedRes.service_id) : null;
+    if (svc && (svc.name === 'Taziri' || svc.name === 'Royal')) {
+      const room = rooms.find((r) => r.id === res.room_id);
+      if (room.section === 'HAMMAM') {
+        offerIncludedSession(savedRes, svc, 'massage');
+      } else {
+        offerIncludedSession(savedRes, svc, 'hammam');
+      }
+    }
+  } catch (e) {
+    $('splitErrMsg').textContent = 'Erreur de connexion.';
+  }
 }
 
 init();

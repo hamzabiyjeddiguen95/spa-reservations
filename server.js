@@ -115,7 +115,7 @@ app.get('/api/reservations', auth, async (req, res) => {
 app.post('/api/reservations', auth, async (req, res) => {
   const {
     room_id, service_id, date, hour, duration, client_type,
-    nb_personnes, sexe, origine, auberge, sans_commission, remise, alerte, taxi, prix, note, staff_names,
+    nb_personnes, sexe, origine, auberge, sans_commission, remise, alerte, taxi, prix, note, staff_names, carte_cadeaux,
   } = req.body;
   if (!room_id || !date || hour === undefined) {
     return res.status(400).json({ error: 'room_id, date et hour sont obligatoires' });
@@ -151,10 +151,10 @@ app.post('/api/reservations', auth, async (req, res) => {
 
     const { rows } = await pool.query(
       `INSERT INTO reservations
-        (room_id, service_id, date, hour, duration, client_type, nb_personnes, sexe, origine, auberge, sans_commission, remise, alerte, taxi, prix, note, staff_names, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+        (room_id, service_id, date, hour, duration, client_type, nb_personnes, sexe, origine, auberge, sans_commission, remise, alerte, taxi, prix, note, staff_names, carte_cadeaux, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
        RETURNING *`,
-      [room_id, service_id || null, date, hour, duration || 1, client_type, nb, sexe, origine, auberge || null, !!sans_commission, remise || 0, !!alerte, !!taxi, prix, note, staff_names, req.user.id]
+      [room_id, service_id || null, date, hour, duration || 1, client_type, nb, sexe, origine, auberge || null, !!sans_commission, remise || 0, !!alerte, !!taxi, prix, note, staff_names, !!carte_cadeaux, req.user.id]
     );
     res.json(rows[0]);
   } catch (e) {
@@ -166,7 +166,7 @@ app.post('/api/reservations', auth, async (req, res) => {
 app.put('/api/reservations/:id', auth, async (req, res) => {
   const { id } = req.params;
   const {
-    client_type, service_id, nb_personnes, sexe, origine, auberge, sans_commission, remise, alerte, taxi, prix, note, staff_names, duration,
+    client_type, service_id, nb_personnes, sexe, origine, auberge, sans_commission, remise, alerte, taxi, prix, note, staff_names, duration, carte_cadeaux,
     room_id, hour, date,
   } = req.body;
   try {
@@ -222,11 +222,12 @@ app.put('/api/reservations/:id', auth, async (req, res) => {
         sans_commission=COALESCE($12, sans_commission),
         remise=COALESCE($13, remise),
         alerte=COALESCE($14, alerte),
-        room_id=$15, hour=$16, date=$17,
+        carte_cadeaux=COALESCE($15, carte_cadeaux),
+        room_id=$16, hour=$17, date=$18,
         updated_at=NOW()
-       WHERE id=$18 RETURNING *`,
+       WHERE id=$19 RETURNING *`,
       [client_type, service_id, nb_personnes, sexe, origine, auberge, taxi, prix, note, staff_names, duration,
-        sans_commission, remise, alerte, targetRoomId, targetHour, targetDate, id]
+        sans_commission, remise, alerte, carte_cadeaux, targetRoomId, targetHour, targetDate, id]
     );
     if (!rows[0]) return res.status(404).json({ error: 'Reservation introuvable' });
     res.json(rows[0]);
