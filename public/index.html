@@ -41,6 +41,8 @@
     <nav class="sidebar-nav">
       <button class="sidebar-item active" data-view="reservations">📅 Reservations</button>
       <button class="sidebar-item" data-view="caisse">💰 Caisse</button>
+      <button class="sidebar-item" data-view="auberges">🏨 Auberges</button>
+      <button class="sidebar-item" data-view="commission">📋 Commission</button>
     </nav>
   </aside>
 
@@ -100,6 +102,26 @@
       <button id="cashDayNextBtn" class="nav-btn2">›</button>
     </div>
     <div id="cashDayBody" style="max-width:520px;"></div>
+  </div>
+
+  <div id="viewAuberges" style="display:none;padding:16px;">
+    <h2 style="margin-bottom:14px;color:#5a3823;">🏨 Auberges</h2>
+    <div style="max-width:420px;">
+      <input id="fAubergeSearch" type="text" placeholder="Rechercher une auberge..." style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;margin-bottom:12px;">
+      <div id="aubergesList" style="margin-bottom:16px;"></div>
+      <div style="display:flex;gap:6px;">
+        <input id="fNewAuberge" type="text" placeholder="Nom de la nouvelle auberge" style="flex:1;padding:10px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;">
+        <button id="addAubergeBtn" class="btn-secondary" style="margin:0;width:auto;padding:10px 16px;">+ Ajouter</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="viewCommission" style="display:none;padding:16px;">
+    <h2 style="margin-bottom:14px;color:#5a3823;">📋 Commission</h2>
+    <div style="max-width:520px;">
+      <select id="fCommissionAuberge" style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;margin-bottom:14px;"></select>
+      <div id="commissionBody"></div>
+    </div>
   </div>
 </div>
 
@@ -201,7 +223,8 @@
       <option value="etranger">Etranger</option>
       <option value="arabe">Arabe</option>
     </select>
-    <input id="fAuberge" type="text" placeholder="Auberge (si le client vient d'une auberge)">
+    <input id="fAuberge" type="text" list="aubergesDatalist" placeholder="Auberge (si le client vient d'une auberge)">
+    <datalist id="aubergesDatalist"></datalist>
     <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:14px;">
       <input id="fSansCommission" type="checkbox" style="width:auto;margin:0;"> Sans commission (auberge a deja regle)
     </label>

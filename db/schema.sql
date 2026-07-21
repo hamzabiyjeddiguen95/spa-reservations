@@ -88,3 +88,21 @@ CREATE TABLE IF NOT EXISTS day_settings (
   date DATE PRIMARY KEY,
   hanan_off BOOLEAN DEFAULT FALSE
 );
+
+-- ---------- Auberges + Commission ----------
+CREATE TABLE IF NOT EXISTS auberges (
+  id SERIAL PRIMARY KEY,
+  name TEXT UNIQUE NOT NULL,
+  opening_balance NUMERIC(10,2) NOT NULL DEFAULT 0,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS commission_credits (
+  id SERIAL PRIMARY KEY,
+  auberge_id INTEGER NOT NULL REFERENCES auberges(id) ON DELETE CASCADE,
+  date DATE NOT NULL,
+  amount NUMERIC(10,2) NOT NULL,
+  note TEXT,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_commission_credits_auberge ON commission_credits(auberge_id);

@@ -315,13 +315,17 @@ async function computeDayCash(dateStr) {
   const extraTotal = extraList.reduce((s, e) => s + e.amount, 0);
 
   const commMap = {};
+  const commDisplayName = {};
   active.forEach((r) => {
     if (!r.auberge || r.sans_commission) return;
     const nb = r.nb_personnes || 1;
     const amt = nb * (nb >= 5 ? 100 : 50);
-    commMap[r.auberge] = (commMap[r.auberge] || 0) + amt;
+    const key = r.auberge.trim().toLowerCase();
+    if (!key) return;
+    commMap[key] = (commMap[key] || 0) + amt;
+    if (!commDisplayName[key]) commDisplayName[key] = r.auberge.trim();
   });
-  const commissionList = Object.entries(commMap).map(([auberge, amount]) => ({ auberge, amount }));
+  const commissionList = Object.entries(commMap).map(([key, amount]) => ({ auberge: commDisplayName[key], amount }));
   const commissionTotal = commissionList.reduce((s, c) => s + c.amount, 0);
 
   const { rows: settingsRows } = await pool.query('SELECT * FROM day_settings WHERE date=$1', [dateStr]);
@@ -412,6 +416,117 @@ app.put('/api/cash-day/hanan-off', auth, async (req, res) => {
     console.error(e);
     res.status(500).json({ error: 'Erreur serveur' });
   }
+});
+
+// ---------- Auberges ----------
+app.get('/api/auberges', auth, async (req, res) => {
+  const { rows } = await pool.query('SELECT * FROM auberges ORDER BY name ASC');
+  res.json(rows);
+});
+
+app.post('/api/auberges', auth, async (req, res) => {
+  const { name } = req.body;
+  if (!name || !name.trim()) return res.status(400).json({ error: 'Nom requis' });
+  try {
+    const { rows } = await pool.query(
+      'INSERT INTO auberges (name) VALUES ($1) RETURNING *',
+      [name.trim()]
+    );
+    res.json(rows[0]);
+  } catch (e) {
+    if (e.code === '23505') return res.status(409).json({ error: 'Cette auberge existe deja.' });
+    console.error(e);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+app.delete('/api/auberges/:id', auth, async (req, res) => {
+  await pool.query('DELETE FROM auberges WHERE id=$1', [req.params.id]);
+  res.json({ ok: true });
+});
+
+// ---------- Commission (releve Debit/Credit/Solde par auberge) ----------
+app.get('/api/commission/:aubergeId', auth, async (req, res) => {
+  const { aubergeId } = req.params;
+  try {
+    const { rows: aubergeRows } = await pool.query('SELECT * FROM auberges WHERE id=$1', [aubergeId]);
+    const auberge = aubergeRows[0];
+    if (!auberge) return res.status(404).json({ error: 'Auberge introuvable' });
+
+    const { rows: resRows } = await pool.query(
+      `SELECT r.date, r.nb_personnes, s.name AS service_name, r.sexe
+       FROM reservations r
+       LEFT JOIN services s ON s.id = r.service_id
+       WHERE r.reclamation=false AND r.sans_commission=false
+         AND lower(trim(r.auberge)) = lower(trim($1))
+       ORDER BY r.date ASC`,
+      [auberge.name]
+    );
+    const debitRows = resRows.map((r) => {
+      const nb = r.nb_personnes || 1;
+      return {
+        date: r.date instanceof Date ? r.date.toISOString().slice(0, 10) : r.date,
+        label: (r.service_name || 'Service') + ' - ' + nb + ' ' + (r.sexe || ''),
+        debit: nb * (nb >= 5 ? 100 : 50),
+        credit: 0,
+      };
+    });
+
+    const { rows: creditRows0 } = await pool.query(
+      'SELECT * FROM commission_credits WHERE auberge_id=$1 ORDER BY date ASC',
+      [aubergeId]
+    );
+    const creditRows = creditRows0.map((c) => ({
+      date: c.date instanceof Date ? c.date.toISOString().slice(0, 10) : c.date,
+      label: c.note || 'Paiement effectue',
+      debit: 0,
+      credit: parseFloat(c.amount),
+      creditId: c.id,
+    }));
+
+    const combined = [...debitRows, ...creditRows].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+
+    let solde = parseFloat(auberge.opening_balance) || 0;
+    if (solde !== 0) {
+      combined.unshift({ date: '—', label: 'Solde initial (importe)', debit: solde > 0 ? solde : 0, credit: solde < 0 ? -solde : 0, solde });
+    }
+    combined.forEach((row) => {
+      if (row.label !== 'Solde initial (importe)') {
+        solde += row.debit - row.credit;
+        row.solde = solde;
+      }
+    });
+
+    const totalDebit = debitRows.reduce((s, r) => s + r.debit, 0) + (parseFloat(auberge.opening_balance) > 0 ? parseFloat(auberge.opening_balance) : 0);
+    const totalCredit = creditRows.reduce((s, r) => s + r.credit, 0);
+
+    res.json({ auberge, combined, totalDebit, totalCredit, solde });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Erreur serveur: ' + e.message });
+  }
+});
+
+app.post('/api/commission/credits', auth, async (req, res) => {
+  const { auberge_id, date, amount, note } = req.body;
+  if (!auberge_id || !date || amount === undefined) {
+    return res.status(400).json({ error: 'auberge_id, date et amount sont obligatoires' });
+  }
+  try {
+    const { rows } = await pool.query(
+      'INSERT INTO commission_credits (auberge_id, date, amount, note) VALUES ($1,$2,$3,$4) RETURNING *',
+      [auberge_id, date, amount, note || 'Paiement effectue']
+    );
+    res.json(rows[0]);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+app.delete('/api/commission/credits/:id', auth, async (req, res) => {
+  await pool.query('DELETE FROM commission_credits WHERE id=$1', [req.params.id]);
+  res.json({ ok: true });
 });
 
 // ---------- Fallback: sert index.html pour toute route inconnue (doit etre APRES toutes les routes API) ----------

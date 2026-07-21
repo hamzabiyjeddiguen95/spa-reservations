@@ -55,6 +55,9 @@ function init() {
   document.querySelectorAll('.sidebar-item').forEach((btn) => {
     btn.addEventListener('click', () => switchView(btn.dataset.view));
   });
+  $('fAubergeSearch').addEventListener('input', renderAubergesList);
+  $('addAubergeBtn').addEventListener('click', addAuberge);
+  $('fCommissionAuberge').addEventListener('change', renderCommissionLedger);
   $('cashDayDate').addEventListener('change', () => loadCashDay($('cashDayDate').value));
   $('cashDayPrevBtn').addEventListener('click', () => {
     const d = new Date($('cashDayDate').value + 'T00:00:00');
@@ -610,10 +613,19 @@ function switchView(view) {
   });
   $('viewReservations').style.display = view === 'reservations' ? 'block' : 'none';
   $('viewCaisse').style.display = view === 'caisse' ? 'block' : 'none';
+  $('viewAuberges').style.display = view === 'auberges' ? 'block' : 'none';
+  $('viewCommission').style.display = view === 'commission' ? 'block' : 'none';
   closeSidebar();
   if (view === 'caisse') {
     $('cashDayDate').value = currentDate;
     loadCashDay(currentDate);
+  }
+  if (view === 'auberges') {
+    $('fAubergeSearch').value = '';
+    loadAuberges();
+  }
+  if (view === 'commission') {
+    loadAubergesForCommission();
   }
 }
 
@@ -763,6 +775,7 @@ function showMain() {
   $('userLabel').textContent = currentUser.full_name;
   renderCalendar();
   loadRoomsAndReservations();
+  loadAuberges();
 }
 
 async function authFetch(url, options = {}) {
@@ -1453,6 +1466,129 @@ async function confirmSplit() {
   } catch (e) {
     $('splitErrMsg').textContent = 'Erreur de connexion.';
   }
+}
+
+// ---------- Auberges ----------
+let auberges = [];
+
+async function loadAuberges() {
+  try {
+    const res = await authFetch(`${API}/api/auberges`);
+    auberges = await res.json();
+    refreshAubergesDatalist();
+    renderAubergesList();
+  } catch (e) { /* ignore */ }
+}
+
+function refreshAubergesDatalist() {
+  $('aubergesDatalist').innerHTML = auberges.map((a) => `<option value="${escapeHtml(a.name)}">`).join('');
+}
+
+function renderAubergesList() {
+  const search = $('fAubergeSearch').value.trim().toLowerCase();
+  const filtered = search ? auberges.filter((a) => a.name.toLowerCase().includes(search)) : auberges;
+  const wrap = $('aubergesList');
+  wrap.innerHTML = filtered.length
+    ? filtered.map((a) => `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px;border:1px solid #e5e7eb;border-radius:8px;margin-bottom:6px;font-size:14px;"><span>${escapeHtml(a.name)}</span><button data-auberge-del="${a.id}" style="color:#dc2626;background:none;border:none;font-size:15px;">✕</button></div>`).join('')
+    : '<p style="font-size:13px;color:#9ca3af;">Aucune auberge trouvee.</p>';
+  wrap.querySelectorAll('[data-auberge-del]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      await authFetch(`${API}/api/auberges/${btn.dataset.aubergeDel}`, { method: 'DELETE' });
+      loadAuberges();
+    });
+  });
+}
+
+async function addAuberge() {
+  const name = $('fNewAuberge').value.trim();
+  if (!name) return;
+  const res = await authFetch(`${API}/api/auberges`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name }),
+  });
+  if (!res.ok) {
+    const data = await res.json();
+    alert(data.error || 'Erreur.');
+    return;
+  }
+  $('fNewAuberge').value = '';
+  loadAuberges();
+}
+
+// ---------- Commission (releve Debit/Credit/Solde par auberge) ----------
+async function loadAubergesForCommission() {
+  try {
+    const res = await authFetch(`${API}/api/auberges`);
+    auberges = await res.json();
+    const sel = $('fCommissionAuberge');
+    const current = sel.value;
+    sel.innerHTML = auberges.map((a) => `<option value="${a.id}">${escapeHtml(a.name)}</option>`).join('');
+    if (auberges.some((a) => String(a.id) === current)) sel.value = current;
+    renderCommissionLedger();
+  } catch (e) { /* ignore */ }
+}
+
+async function renderCommissionLedger() {
+  const sel = $('fCommissionAuberge');
+  const wrap = $('commissionBody');
+  if (!sel.value) {
+    wrap.innerHTML = '<p style="font-size:13px;color:#9ca3af;">Ajoute d\'abord une auberge dans la section Auberges.</p>';
+    return;
+  }
+  wrap.innerHTML = '<p style="color:#6b7280;font-size:13px;">Chargement...</p>';
+  try {
+    const res = await authFetch(`${API}/api/commission/${sel.value}`);
+    const ledger = await res.json();
+    if (!res.ok) {
+      wrap.innerHTML = `<p style="color:#dc2626;font-size:13px;">${ledger.error || 'Erreur'}</p>`;
+      return;
+    }
+
+    const rows = ledger.combined.length
+      ? ledger.combined.map((r) => `
+        <div style="display:grid;grid-template-columns:80px 1fr 70px 70px 80px;gap:6px;font-size:12.5px;padding:6px 0;border-bottom:1px solid #f3f4f6;align-items:center;">
+          <span>${escapeHtml(String(r.date))}</span>
+          <span>${escapeHtml(r.label)}</span>
+          <span style="color:#b45309;">${r.debit ? fmtMoney(r.debit) : ''}</span>
+          <span style="color:#16a34a;">${r.credit ? fmtMoney(r.credit) : ''}</span>
+          <span style="font-weight:700;">${fmtMoney(r.solde)}</span>
+        </div>`).join('')
+      : '<p style="font-size:13px;color:#9ca3af;padding:8px 0;">Aucun mouvement pour cette auberge.</p>';
+
+    wrap.innerHTML = `
+      <div style="background:#f9f6f0;border-radius:10px;padding:12px;margin-bottom:14px;display:flex;justify-content:space-between;gap:10px;">
+        <div><div style="font-size:11px;color:#9ca3af;">Total du</div><div style="font-weight:700;color:#b45309;">${fmtMoney(ledger.totalDebit)}</div></div>
+        <div><div style="font-size:11px;color:#9ca3af;">Total paye</div><div style="font-weight:700;color:#16a34a;">${fmtMoney(ledger.totalCredit)}</div></div>
+        <div><div style="font-size:11px;color:#9ca3af;">Solde restant</div><div style="font-weight:800;color:#5a3823;">${fmtMoney(ledger.solde)}</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:80px 1fr 70px 70px 80px;gap:6px;font-size:11px;font-weight:700;color:#5a3823;padding-bottom:6px;border-bottom:2px solid #e5e7eb;">
+        <span>Date</span><span>Detail</span><span>Du</span><span>Paye</span><span>Solde</span>
+      </div>
+      ${rows}
+      <div style="display:flex;gap:6px;margin-top:14px;">
+        <input id="fCreditDate" type="date" value="${currentDate}" style="padding:8px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;">
+        <input id="fCreditAmount" type="number" placeholder="Montant paye" style="flex:1;padding:8px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;">
+        <button id="addCreditBtn" class="btn-secondary" style="padding:8px 12px;margin:0;">+ Enregistrer paiement</button>
+      </div>
+    `;
+    $('addCreditBtn').addEventListener('click', addCredit);
+  } catch (e) {
+    wrap.innerHTML = '<p style="color:#dc2626;font-size:13px;">Erreur de chargement.</p>';
+  }
+}
+
+async function addCredit() {
+  const sel = $('fCommissionAuberge');
+  const date = $('fCreditDate').value;
+  const amount = parseFloat($('fCreditAmount').value);
+  if (!sel.value || !date || isNaN(amount)) return;
+  await authFetch(`${API}/api/commission/credits`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ auberge_id: sel.value, date, amount, note: 'Paiement effectue' }),
+  });
+  renderCommissionLedger();
 }
 
 init();

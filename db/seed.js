@@ -102,6 +102,23 @@ async function main() {
   await pool.query("UPDATE rooms SET name='2 place home' WHERE section='HAMMAM' AND name ILIKE '%homme%'");
   await pool.query("UPDATE rooms SET name='2 place Feme' WHERE section='HAMMAM' AND name ILIKE '%femme%'");
 
+  console.log('Import des auberges depuis le fichier Excel (si pas deja presentes)...');
+  const importPath = path.join(__dirname, 'auberges_import.json');
+  if (fs.existsSync(importPath)) {
+    const auberges = JSON.parse(fs.readFileSync(importPath, 'utf-8'));
+    let added = 0;
+    for (const a of auberges) {
+      const { rowCount } = await pool.query(
+        'INSERT INTO auberges (name, opening_balance) VALUES ($1,$2) ON CONFLICT (name) DO NOTHING',
+        [a.name, a.opening_balance]
+      );
+      if (rowCount > 0) added++;
+    }
+    console.log(`${added} nouvelle(s) auberge(s) importee(s) (sur ${auberges.length} dans le fichier).`);
+  } else {
+    console.log('Aucun fichier auberges_import.json trouve, etape ignoree.');
+  }
+
   await pool.end();
   console.log('Termine.');
 }
