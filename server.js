@@ -290,11 +290,6 @@ app.delete('/api/reservations/:id', auth, async (req, res) => {
   res.json({ ok: true });
 });
 
-// ---------- Fallback: sert index.html pour toute route inconnue ----------
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
 // ---------- Comptabilite : calcul de caisse ----------
 function splitStaffNames(str) {
   if (!str) return [];
@@ -417,6 +412,11 @@ app.put('/api/cash-day/hanan-off', auth, async (req, res) => {
     console.error(e);
     res.status(500).json({ error: 'Erreur serveur' });
   }
+});
+
+// ---------- Fallback: sert index.html pour toute route inconnue (doit etre APRES toutes les routes API) ----------
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 app.listen(PORT, () => {
