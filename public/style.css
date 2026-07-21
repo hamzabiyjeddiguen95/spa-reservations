@@ -107,7 +107,7 @@ body {
 @media (min-width: 900px) {
   .sidebar { left:0; }
   .sidebar-overlay { display:none !important; }
-  body { padding-left:240px; }
+  #mainScreen { padding-left:240px; }
   .hamburger-btn { display:none; }
 }
 .nav-btn {
