@@ -822,6 +822,7 @@ let selectedSection = null;
 
 function populateSectionFilter() {
   const bar = $('sectionFilter');
+  if (!bar) return;
   const sections = [...new Set(rooms.map((r) => r.section))];
   bar.innerHTML = '';
   const makeBtn = (label, value) => {
@@ -1636,10 +1637,9 @@ async function renderCommissionLedger() {
       <div style="${GRID}font-size:10px;font-weight:700;color:#fff;background:#5a3823;border-radius:8px 8px 0 0;padding:9px 6px;text-transform:uppercase;letter-spacing:.3px;">
         <span>Date</span><span>Pack</span><span>H</span><span>F</span><span>Debit</span><span>Credit</span><span>Solde</span><span></span>
       </div>
-      <div id="commRows" style="padding:0 6px;">${rows || '<p style="font-size:13px;color:#9ca3af;padding:8px 0;">Aucune ligne. Ajoute-en une ou importe les reservations.</p>'}</div>
+      <div id="commRows" style="padding:0 6px;">${rows || '<p style="font-size:13px;color:#9ca3af;padding:8px 0;">Aucune ligne pour cette auberge. Clique « + Ajouter une ligne ».</p>'}</div>
       <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;">
         <button id="addEntryBtn" class="btn-secondary" style="padding:9px 14px;margin:0;">+ Ajouter une ligne</button>
-        <button id="importResBtn" class="btn-secondary" style="padding:9px 14px;margin:0;background:#efe7d9;color:#5a3823;">⤓ Importer les reservations</button>
       </div>
       <p style="font-size:11.5px;color:#9c8f78;margin-top:10px;line-height:1.5;">Clique sur n'importe quelle case pour la modifier — c'est enregistre automatiquement. Le solde et les totaux se recalculent tout seuls.</p>
     `;
@@ -1693,20 +1693,6 @@ async function renderCommissionLedger() {
       const cells = wrap.querySelectorAll('.commRow:last-child .commCell');
       if (cells.length) cells[1].focus();
     });
-
-    $('importResBtn').addEventListener('click', async () => {
-      const btn = $('importResBtn');
-      btn.textContent = 'Import...'; btn.disabled = true;
-      try {
-        const r = await authFetch(`${API}/api/commission/${sel.value}/import`, { method: 'POST' });
-        const out = await r.json();
-        await renderCommissionLedger();
-        if (out.added === 0) alert('Aucune nouvelle reservation a importer.');
-      } catch (e) {
-        alert('Erreur lors de l\'import.');
-        btn.textContent = '⤓ Importer les reservations'; btn.disabled = false;
-      }
-    });
   } catch (e) {
     wrap.innerHTML = '<p style="color:#dc2626;font-size:13px;">Erreur de chargement.</p>';
   }
@@ -1728,24 +1714,6 @@ async function renderSoldeGlobal() {
         <button data-pay="${a.id}" style="padding:7px 11px;border:none;border-radius:9px;background:#efe7d9;color:#5a3823;font-weight:700;font-size:12px;cursor:pointer;">A pris son argent</button>
       </div>`).join('');
 
-    const histRows = d.history.map((h) => {
-      const isSoins = /client/i.test(h.motive || '');
-      const badge = h.motive ? `<span style="font-size:11px;color:#9ca3af;">${isSoins ? '🧖 ' : '💵 '}${escapeHtml(h.motive)}</span>` : '';
-      return `
-      <div style="display:flex;justify-content:space-between;gap:10px;padding:10px 14px;border-bottom:1px solid #f6f2ea;font-size:13px;align-items:center;">
-        <span style="color:#9ca3af;font-size:12px;white-space:nowrap;">${escapeHtml(String(h.date || ''))}</span>
-        <span style="flex:1;color:#374151;">${escapeHtml(h.auberge)}<br>${badge}</span>
-        <span style="font-weight:700;color:#16a34a;white-space:nowrap;">-${fmtMoney(h.amount)}</span>
-      </div>`;
-    }).join('');
-
-    const fmtDay = (s) => { if (!s) return ''; const p = String(s).split('-'); return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : s; };
-    const dailyRows = (d.dailyHistory || []).map((x) => `
-      <div style="display:flex;justify-content:space-between;gap:10px;padding:10px 14px;border-bottom:1px solid #f6f2ea;font-size:13px;">
-        <span style="color:#374151;">${fmtDay(x.date)}</span>
-        <span style="font-weight:700;color:#b45309;white-space:nowrap;">+${fmtMoney(x.total)}</span>
-      </div>`).join('');
-
     wrap.innerHTML = `
       <div style="background:linear-gradient(135deg,#5a3823,#7a4a2c);color:#fff;border-radius:18px;padding:22px;margin-bottom:14px;box-shadow:0 10px 30px rgba(90,56,35,.25);">
         <div style="font-size:12.5px;color:#e8d5bf;text-transform:uppercase;letter-spacing:1px;">Total a rendre aux auberges</div>
@@ -1763,12 +1731,6 @@ async function renderSoldeGlobal() {
 
       <p style="font-size:13px;font-weight:800;color:#5a3823;text-transform:uppercase;letter-spacing:.5px;margin:6px 2px 10px;">Les auberges a payer</p>
       <div style="background:#fff;border:1px solid #eee;border-radius:14px;overflow:hidden;">${aubRows || '<div style="padding:16px;color:#9ca3af;text-align:center;">Aucune auberge a payer.</div>'}</div>
-
-      <p style="font-size:13px;font-weight:800;color:#5a3823;text-transform:uppercase;letter-spacing:.5px;margin:20px 2px 10px;">Commissions par jour (évolution)</p>
-      <div style="background:#fff;border:1px solid #eee;border-radius:14px;overflow:hidden;">${dailyRows || '<div style="padding:14px;color:#9ca3af;text-align:center;">Aucune commission enregistrée.</div>'}</div>
-
-      <p style="font-size:13px;font-weight:800;color:#5a3823;text-transform:uppercase;letter-spacing:.5px;margin:20px 2px 10px;">Derniers retraits</p>
-      <div style="background:#fff;border:1px solid #eee;border-radius:14px;overflow:hidden;">${histRows || '<div style="padding:14px;color:#9ca3af;text-align:center;">Aucun retrait.</div>'}</div>
       <p style="font-size:11.5px;color:#9c8f78;margin-top:12px;line-height:1.5;">Le total se calcule tout seul (somme des soldes de toutes les auberges). Quand une auberge prend son argent, clique sur sa ligne : le total baisse automatiquement.</p>
     `;
 

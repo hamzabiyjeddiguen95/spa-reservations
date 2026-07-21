@@ -134,7 +134,7 @@ body {
 /* ---------- Grid ---------- */
 .grid-wrapper {
   overflow: auto;
-  max-height: 68vh;
+  max-height: calc(100dvh - 175px);
   -webkit-overflow-scrolling: touch;
 }
 .grid {
@@ -280,11 +280,11 @@ body {
 .chip.active { background: #5a3823; color: white; border-color: #5a3823; }
 
 /* ---------- Barre de date simple ---------- */
-.datebar { display:flex; align-items:center; gap:8px; background:white; border-radius:16px; padding:10px 12px; margin:12px; box-shadow:0 2px 8px rgba(0,0,0,0.06); }
-.datebar .nav-btn2 { background:#f3e9d8; border:none; color:#5a3823; width:36px; height:36px; border-radius:10px; font-size:18px; font-weight:700; cursor:pointer; flex:none; }
+.datebar { display:flex; align-items:center; gap:8px; background:white; border-radius:14px; padding:6px 10px; margin:8px 12px; box-shadow:0 2px 8px rgba(0,0,0,0.06); }
+.datebar .nav-btn2 { background:#f3e9d8; border:none; color:#5a3823; width:32px; height:32px; border-radius:10px; font-size:17px; font-weight:700; cursor:pointer; flex:none; }
 .datebar .date-wrap { flex:1; position:relative; }
-.datebar .date-display { width:100%; text-align:center; font-size:15px; font-weight:700; color:#1f2937; text-transform:capitalize; padding:8px 4px; background:#f9fafb; border-radius:10px; cursor:pointer; }
-.datebar .today-btn2 { background:#5a3823; color:white; border:none; border-radius:10px; padding:0 14px; height:36px; font-size:12.5px; font-weight:600; cursor:pointer; flex:none; white-space:nowrap; }
+.datebar .date-display { width:100%; text-align:center; font-size:14px; font-weight:700; color:#1f2937; text-transform:capitalize; padding:6px 4px; background:#f9fafb; border-radius:10px; cursor:pointer; }
+.datebar .today-btn2 { background:#5a3823; color:white; border:none; border-radius:10px; padding:0 12px; height:32px; font-size:12px; font-weight:600; cursor:pointer; flex:none; white-space:nowrap; }
 .date-res-dot { display:inline-block; width:6px; height:6px; border-radius:50%; background:#f87171; margin-left:6px; vertical-align:middle; }
 
 /* Popup calendrier */
