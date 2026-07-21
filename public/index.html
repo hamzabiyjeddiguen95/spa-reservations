@@ -42,7 +42,6 @@
       <button class="sidebar-item active" data-view="reservations">📅 Reservations</button>
       <button class="sidebar-item" data-view="caisse">💰 Caisse</button>
       <button class="sidebar-item" data-view="auberges">🏨 Auberges</button>
-      <button class="sidebar-item" data-view="solde">💵 Solde auberges</button>
       <button class="sidebar-item" data-view="commission">📋 Commission</button>
     </nav>
   </aside>
@@ -119,16 +118,18 @@
 
   <div id="viewCommission" style="display:none;padding:16px;">
     <h2 style="margin-bottom:14px;color:#5a3823;">📋 Commission</h2>
-    <div style="max-width:520px;">
+    <div style="display:flex;gap:8px;margin-bottom:18px;max-width:560px;">
+      <button class="comm-tab active" data-ctab="solde" style="flex:1;padding:12px;border:none;border-radius:12px;cursor:pointer;font-weight:700;font-size:14px;background:#5a3823;color:#fff;">💰 Solde global</button>
+      <button class="comm-tab" data-ctab="detail" style="flex:1;padding:12px;border:none;border-radius:12px;cursor:pointer;font-weight:700;font-size:14px;background:#e7ddcd;color:#7a6650;">📋 Détail par auberge</button>
+    </div>
+    <div id="commPanelSolde" style="max-width:560px;">
+      <div id="soldeBody"></div>
+    </div>
+    <div id="commPanelDetail" style="display:none;max-width:520px;">
       <input id="fCommissionSearch" type="text" placeholder="🔍 Rechercher une auberge..." style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;margin-bottom:8px;">
       <select id="fCommissionAuberge" style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;margin-bottom:14px;"></select>
       <div id="commissionBody"></div>
     </div>
-  </div>
-
-  <div id="viewSolde" style="display:none;padding:16px;">
-    <h2 style="margin-bottom:14px;color:#5a3823;">💵 Solde auberges</h2>
-    <div style="max-width:560px;" id="soldeBody"></div>
   </div>
 </div>
 

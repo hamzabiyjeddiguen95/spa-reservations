@@ -59,6 +59,9 @@ function init() {
   $('addAubergeBtn').addEventListener('click', addAuberge);
   $('fCommissionAuberge').addEventListener('change', renderCommissionLedger);
   $('fCommissionSearch').addEventListener('input', () => fillCommissionSelect($('fCommissionSearch').value));
+  document.querySelectorAll('.comm-tab').forEach((btn) => {
+    btn.addEventListener('click', () => switchCommTab(btn.dataset.ctab));
+  });
   $('cashDayDate').addEventListener('change', () => loadCashDay($('cashDayDate').value));
   $('cashDayPrevBtn').addEventListener('click', () => {
     const d = new Date($('cashDayDate').value + 'T00:00:00');
@@ -615,7 +618,6 @@ function switchView(view) {
   $('viewReservations').style.display = view === 'reservations' ? 'block' : 'none';
   $('viewCaisse').style.display = view === 'caisse' ? 'block' : 'none';
   $('viewAuberges').style.display = view === 'auberges' ? 'block' : 'none';
-  $('viewSolde').style.display = view === 'solde' ? 'block' : 'none';
   $('viewCommission').style.display = view === 'commission' ? 'block' : 'none';
   closeSidebar();
   if (view === 'caisse') {
@@ -626,12 +628,22 @@ function switchView(view) {
     $('fAubergeSearch').value = '';
     loadAuberges();
   }
-  if (view === 'solde') {
-    renderSoldeGlobal();
-  }
   if (view === 'commission') {
-    loadAubergesForCommission();
+    switchCommTab('solde');
   }
+}
+
+function switchCommTab(tab) {
+  document.querySelectorAll('.comm-tab').forEach((el) => {
+    const on = el.dataset.ctab === tab;
+    el.classList.toggle('active', on);
+    el.style.background = on ? '#5a3823' : '#e7ddcd';
+    el.style.color = on ? '#fff' : '#7a6650';
+  });
+  $('commPanelSolde').style.display = tab === 'solde' ? 'block' : 'none';
+  $('commPanelDetail').style.display = tab === 'detail' ? 'block' : 'none';
+  if (tab === 'solde') renderSoldeGlobal();
+  else loadAubergesForCommission();
 }
 
 // ---------- Calcul de caisse ----------
