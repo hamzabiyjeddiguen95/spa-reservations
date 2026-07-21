@@ -132,14 +132,31 @@ body {
 }
 
 /* ---------- Grid ---------- */
+#mainScreen.screen {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+#viewReservations {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
 .grid-wrapper {
+  flex: 1;
+  min-height: 0;
   overflow: auto;
-  max-height: calc(100dvh - 175px);
   -webkit-overflow-scrolling: touch;
 }
 .grid {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   min-width: max-content;
+  min-height: 100%;
+}
+.grid > .grid-row {
+  flex: 1 1 0;
 }
 .grid-row {
   display: grid;
