@@ -158,6 +158,52 @@ app.get('/api/reservations', auth, async (req, res) => {
   res.json(rows);
 });
 
+// Cree/met a jour automatiquement la ligne de commission liee a une reservation.
+// Appelee a chaque creation / modification / suppression de reservation.
+async function syncReservationCommission(r) {
+  if (!r) return;
+  // On repart propre : on efface l'ancienne ligne auto de cette reservation
+  await pool.query('DELETE FROM commission_entries WHERE reservation_id=$1', [r.id]);
+  const aubName = (r.auberge || '').trim();
+  if (!aubName || r.sans_commission || r.reclamation) return; // pas de commission
+
+  // Trouver l'auberge par nom, ou la creer si elle n'existe pas encore
+  let { rows: aubRows } = await pool.query(
+    'SELECT id FROM auberges WHERE lower(trim(name))=lower(trim($1)) LIMIT 1', [aubName]
+  );
+  let aubergeId = aubRows[0] && aubRows[0].id;
+  if (!aubergeId) {
+    const ins = await pool.query(
+      'INSERT INTO auberges (name, opening_balance) VALUES ($1,0) ON CONFLICT (name) DO NOTHING RETURNING id',
+      [aubName]
+    );
+    if (ins.rows[0]) aubergeId = ins.rows[0].id;
+    else {
+      const again = await pool.query('SELECT id FROM auberges WHERE lower(trim(name))=lower(trim($1)) LIMIT 1', [aubName]);
+      aubergeId = again.rows[0] && again.rows[0].id;
+    }
+  }
+  if (!aubergeId) return;
+
+  const nb = r.nb_personnes || 1;
+  const isHomme = (r.sexe || '').toLowerCase().startsWith('h');
+  const debit = nb * (nb >= 5 ? 100 : 50);
+  let pack = 'Service';
+  if (r.service_id) {
+    const { rows: s } = await pool.query('SELECT name FROM services WHERE id=$1', [r.service_id]);
+    if (s[0]) pack = s[0].name;
+  }
+  const { rows: posRows } = await pool.query(
+    'SELECT COALESCE(MAX(position),0)+1 AS next FROM commission_entries WHERE auberge_id=$1', [aubergeId]
+  );
+  const date = r.date instanceof Date ? r.date.toISOString().slice(0, 10) : r.date;
+  await pool.query(
+    `INSERT INTO commission_entries (auberge_id, date, pack, homme, femme, debit, credit, source, reservation_id, position)
+     VALUES ($1,$2,$3,$4,$5,$6,0,'reservation',$7,$8)`,
+    [aubergeId, date, pack, isHomme ? nb : 0, isHomme ? 0 : nb, debit, r.id, posRows[0].next]
+  );
+}
+
 app.post('/api/reservations', auth, async (req, res) => {
   const {
     room_id, service_id, date, hour, duration, client_type,
@@ -202,6 +248,7 @@ app.post('/api/reservations', auth, async (req, res) => {
        RETURNING *`,
       [room_id, service_id || null, date, hour, duration || 1, client_type, nb, sexe, origine, auberge || null, !!sans_commission, remise || 0, !!alerte, !!taxi, prix, note, staff_names, !!carte_cadeaux, !!reclamation, req.user.id]
     );
+    await syncReservationCommission(rows[0]);
     res.json(rows[0]);
   } catch (e) {
     console.error(e);
@@ -277,6 +324,7 @@ app.put('/api/reservations/:id', auth, async (req, res) => {
         sans_commission, remise, alerte, carte_cadeaux, reclamation, targetRoomId, targetHour, targetDate, id]
     );
     if (!rows[0]) return res.status(404).json({ error: 'Reservation introuvable' });
+    await syncReservationCommission(rows[0]);
     res.json(rows[0]);
   } catch (e) {
     console.error(e);
@@ -286,6 +334,7 @@ app.put('/api/reservations/:id', auth, async (req, res) => {
 
 app.delete('/api/reservations/:id', auth, async (req, res) => {
   const { id } = req.params;
+  await pool.query('DELETE FROM commission_entries WHERE reservation_id=$1', [id]);
   await pool.query('DELETE FROM reservations WHERE id=$1', [id]);
   res.json({ ok: true });
 });
@@ -462,7 +511,23 @@ app.put('/api/auberges/:id', auth, async (req, res) => {
   }
 });
 
-// ---------- Commission (releve Debit/Credit/Solde par auberge) ----------
+// ---------- Commission : lignes entierement modifiables a la main (comme l'Excel) ----------
+const toISO = (d) => (d instanceof Date ? d.toISOString().slice(0, 10) : d);
+
+function entryOut(e) {
+  return {
+    id: e.id,
+    date: toISO(e.date) || '',
+    pack: e.pack || '',
+    homme: e.homme || 0,
+    femme: e.femme || 0,
+    debit: parseFloat(e.debit) || 0,
+    credit: parseFloat(e.credit) || 0,
+    source: e.source || 'manual',
+  };
+}
+
+// GET : renvoie toutes les lignes d'une auberge + solde cumule + totaux
 app.get('/api/commission/:aubergeId', auth, async (req, res) => {
   const { aubergeId } = req.params;
   try {
@@ -470,80 +535,183 @@ app.get('/api/commission/:aubergeId', auth, async (req, res) => {
     const auberge = aubergeRows[0];
     if (!auberge) return res.status(404).json({ error: 'Auberge introuvable' });
 
-    const { rows: resRows } = await pool.query(
-      `SELECT r.date, r.nb_personnes, s.name AS service_name, r.sexe
-       FROM reservations r
-       LEFT JOIN services s ON s.id = r.service_id
-       WHERE r.reclamation=false AND r.sans_commission=false
-         AND lower(trim(r.auberge)) = lower(trim($1))
-       ORDER BY r.date ASC`,
-      [auberge.name]
-    );
-    const debitRows = resRows.map((r) => {
-      const nb = r.nb_personnes || 1;
-      return {
-        date: r.date instanceof Date ? r.date.toISOString().slice(0, 10) : r.date,
-        label: (r.service_name || 'Service') + ' - ' + nb + ' ' + (r.sexe || ''),
-        debit: nb * (nb >= 5 ? 100 : 50),
-        credit: 0,
-      };
-    });
-
-    const { rows: creditRows0 } = await pool.query(
-      'SELECT * FROM commission_credits WHERE auberge_id=$1 ORDER BY date ASC',
+    const { rows: entries } = await pool.query(
+      'SELECT * FROM commission_entries WHERE auberge_id=$1 ORDER BY position ASC, date ASC, id ASC',
       [aubergeId]
     );
-    const creditRows = creditRows0.map((c) => ({
-      date: c.date instanceof Date ? c.date.toISOString().slice(0, 10) : c.date,
-      label: c.note || 'Paiement effectue',
-      debit: 0,
-      credit: parseFloat(c.amount),
-      creditId: c.id,
-    }));
 
-    const combined = [...debitRows, ...creditRows].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
-
-    let solde = parseFloat(auberge.opening_balance) || 0;
-    if (solde !== 0) {
-      combined.unshift({ date: '—', label: 'Solde initial (importe)', debit: solde > 0 ? solde : 0, credit: solde < 0 ? -solde : 0, solde });
-    }
-    combined.forEach((row) => {
-      if (row.label !== 'Solde initial (importe)') {
-        solde += row.debit - row.credit;
-        row.solde = solde;
-      }
+    const opening = parseFloat(auberge.opening_balance) || 0;
+    let solde = opening;
+    const combined = entries.map((e) => {
+      const row = entryOut(e);
+      solde += row.debit - row.credit;
+      row.solde = solde;
+      return row;
     });
 
-    const totalDebit = debitRows.reduce((s, r) => s + r.debit, 0) + (parseFloat(auberge.opening_balance) > 0 ? parseFloat(auberge.opening_balance) : 0);
-    const totalCredit = creditRows.reduce((s, r) => s + r.credit, 0);
+    const totalDebit = combined.reduce((s, r) => s + r.debit, 0) + (opening > 0 ? opening : 0);
+    const totalCredit = combined.reduce((s, r) => s + r.credit, 0) + (opening < 0 ? -opening : 0);
 
-    res.json({ auberge, combined, totalDebit, totalCredit, solde });
+    res.json({ auberge, opening, combined, totalDebit, totalCredit, solde });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'Erreur serveur: ' + e.message });
   }
 });
 
-app.post('/api/commission/credits', auth, async (req, res) => {
-  const { auberge_id, date, amount, note } = req.body;
-  if (!auberge_id || !date || amount === undefined) {
-    return res.status(400).json({ error: 'auberge_id, date et amount sont obligatoires' });
-  }
+// POST : ajoute une ligne manuelle
+app.post('/api/commission/entries', auth, async (req, res) => {
+  const { auberge_id, date, pack, homme, femme, debit, credit } = req.body;
+  if (!auberge_id) return res.status(400).json({ error: 'auberge_id obligatoire' });
   try {
-    const { rows } = await pool.query(
-      'INSERT INTO commission_credits (auberge_id, date, amount, note) VALUES ($1,$2,$3,$4) RETURNING *',
-      [auberge_id, date, amount, note || 'Paiement effectue']
+    const { rows: posRows } = await pool.query(
+      'SELECT COALESCE(MAX(position),0)+1 AS next FROM commission_entries WHERE auberge_id=$1',
+      [auberge_id]
     );
-    res.json(rows[0]);
+    const { rows } = await pool.query(
+      `INSERT INTO commission_entries (auberge_id, date, pack, homme, femme, debit, credit, source, position)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,'manual',$8) RETURNING *`,
+      [auberge_id, date || null, pack || '', homme || 0, femme || 0, debit || 0, credit || 0, posRows[0].next]
+    );
+    res.json(entryOut(rows[0]));
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
-app.delete('/api/commission/credits/:id', auth, async (req, res) => {
-  await pool.query('DELETE FROM commission_credits WHERE id=$1', [req.params.id]);
+// PUT : modifie n'importe quel champ d'une ligne
+app.put('/api/commission/entries/:id', auth, async (req, res) => {
+  const { date, pack, homme, femme, debit, credit } = req.body;
+  try {
+    const { rows } = await pool.query(
+      `UPDATE commission_entries SET
+         date=COALESCE($1,date), pack=COALESCE($2,pack),
+         homme=COALESCE($3,homme), femme=COALESCE($4,femme),
+         debit=COALESCE($5,debit), credit=COALESCE($6,credit)
+       WHERE id=$7 RETURNING *`,
+      [
+        date !== undefined ? (date || null) : null,
+        pack !== undefined ? pack : null,
+        homme !== undefined ? homme : null,
+        femme !== undefined ? femme : null,
+        debit !== undefined ? debit : null,
+        credit !== undefined ? credit : null,
+        req.params.id,
+      ]
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'Ligne introuvable' });
+    res.json(entryOut(rows[0]));
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// DELETE : supprime une ligne
+app.delete('/api/commission/entries/:id', auth, async (req, res) => {
+  await pool.query('DELETE FROM commission_entries WHERE id=$1', [req.params.id]);
   res.json({ ok: true });
+});
+
+// POST import : cree des lignes automatiquement depuis les reservations pas encore importees
+app.post('/api/commission/:aubergeId/import', auth, async (req, res) => {
+  const { aubergeId } = req.params;
+  try {
+    const { rows: aubergeRows } = await pool.query('SELECT * FROM auberges WHERE id=$1', [aubergeId]);
+    const auberge = aubergeRows[0];
+    if (!auberge) return res.status(404).json({ error: 'Auberge introuvable' });
+
+    const { rows: resRows } = await pool.query(
+      `SELECT r.id, r.date, r.nb_personnes, s.name AS service_name, r.sexe
+       FROM reservations r
+       LEFT JOIN services s ON s.id = r.service_id
+       WHERE r.reclamation=false AND r.sans_commission=false
+         AND lower(trim(r.auberge)) = lower(trim($1))
+         AND r.id NOT IN (
+           SELECT reservation_id FROM commission_entries
+           WHERE auberge_id=$2 AND reservation_id IS NOT NULL
+         )
+       ORDER BY r.date ASC`,
+      [auberge.name, aubergeId]
+    );
+
+    const { rows: posRows } = await pool.query(
+      'SELECT COALESCE(MAX(position),0) AS max FROM commission_entries WHERE auberge_id=$1',
+      [aubergeId]
+    );
+    let pos = posRows[0].max;
+    let added = 0;
+    for (const r of resRows) {
+      const nb = r.nb_personnes || 1;
+      const isHomme = (r.sexe || '').toLowerCase().startsWith('h');
+      const debit = nb * (nb >= 5 ? 100 : 50);
+      pos += 1;
+      await pool.query(
+        `INSERT INTO commission_entries (auberge_id, date, pack, homme, femme, debit, credit, source, reservation_id, position)
+         VALUES ($1,$2,$3,$4,$5,$6,0,'reservation',$7,$8)`,
+        [aubergeId, toISO(r.date), r.service_name || 'Service', isHomme ? nb : 0, isHomme ? 0 : nb, debit, r.id, pos]
+      );
+      added += 1;
+    }
+    res.json({ ok: true, added });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Erreur serveur: ' + e.message });
+  }
+});
+
+// GET tableau de bord global : total a rendre = somme auto des soldes de toutes les auberges
+app.get('/api/commission-global', auth, async (req, res) => {
+  try {
+    const { rows: aubs } = await pool.query('SELECT id, name, opening_balance FROM auberges ORDER BY name ASC');
+    const { rows: sums } = await pool.query(
+      'SELECT auberge_id, COALESCE(SUM(debit-credit),0) AS bal FROM commission_entries GROUP BY auberge_id'
+    );
+    const balMap = {};
+    sums.forEach((s) => { balMap[s.auberge_id] = parseFloat(s.bal) || 0; });
+
+    const list = aubs
+      .map((a) => ({ id: a.id, name: a.name, balance: (parseFloat(a.opening_balance) || 0) + (balMap[a.id] || 0) }))
+      .filter((x) => Math.abs(x.balance) > 0.5)
+      .sort((a, b) => b.balance - a.balance);
+    const total = list.reduce((s, x) => s + x.balance, 0);
+
+    const { rows: todayRows } = await pool.query(
+      "SELECT COALESCE(SUM(debit),0) AS t FROM commission_entries WHERE date=CURRENT_DATE"
+    );
+    const todayTotal = parseFloat(todayRows[0].t) || 0;
+
+    // Historique jour par jour des commissions accumulees (debits), du plus recent au plus ancien
+    const { rows: dailyRows } = await pool.query(
+      `SELECT date, COALESCE(SUM(debit),0) AS total
+       FROM commission_entries
+       WHERE debit > 0 AND date IS NOT NULL
+       GROUP BY date ORDER BY date DESC LIMIT 30`
+    );
+    const dailyHistory = dailyRows.map((r) => ({
+      date: r.date instanceof Date ? r.date.toISOString().slice(0, 10) : r.date,
+      total: parseFloat(r.total) || 0,
+    }));
+
+    const { rows: hist } = await pool.query(
+      `SELECT ce.date, ce.credit, ce.pack, a.name FROM commission_entries ce
+       JOIN auberges a ON a.id=ce.auberge_id
+       WHERE ce.credit > 0
+       ORDER BY ce.date DESC NULLS LAST, ce.id DESC LIMIT 20`
+    );
+    const history = hist.map((h) => ({
+      date: h.date instanceof Date ? h.date.toISOString().slice(0, 10) : h.date,
+      auberge: h.name,
+      motive: h.pack || '',
+      amount: parseFloat(h.credit) || 0,
+    }));
+
+    res.json({ total, todayTotal, auberges: list, history, dailyHistory });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Erreur serveur: ' + e.message });
+  }
 });
 
 // ---------- Fallback: sert index.html pour toute route inconnue (doit etre APRES toutes les routes API) ----------

@@ -58,6 +58,7 @@ function init() {
   $('fAubergeSearch').addEventListener('input', renderAubergesList);
   $('addAubergeBtn').addEventListener('click', addAuberge);
   $('fCommissionAuberge').addEventListener('change', renderCommissionLedger);
+  $('fCommissionSearch').addEventListener('input', () => fillCommissionSelect($('fCommissionSearch').value));
   $('cashDayDate').addEventListener('change', () => loadCashDay($('cashDayDate').value));
   $('cashDayPrevBtn').addEventListener('click', () => {
     const d = new Date($('cashDayDate').value + 'T00:00:00');
@@ -614,6 +615,7 @@ function switchView(view) {
   $('viewReservations').style.display = view === 'reservations' ? 'block' : 'none';
   $('viewCaisse').style.display = view === 'caisse' ? 'block' : 'none';
   $('viewAuberges').style.display = view === 'auberges' ? 'block' : 'none';
+  $('viewSolde').style.display = view === 'solde' ? 'block' : 'none';
   $('viewCommission').style.display = view === 'commission' ? 'block' : 'none';
   closeSidebar();
   if (view === 'caisse') {
@@ -623,6 +625,9 @@ function switchView(view) {
   if (view === 'auberges') {
     $('fAubergeSearch').value = '';
     loadAuberges();
+  }
+  if (view === 'solde') {
+    renderSoldeGlobal();
   }
   if (view === 'commission') {
     loadAubergesForCommission();
@@ -1565,12 +1570,18 @@ async function loadAubergesForCommission() {
   try {
     const res = await authFetch(`${API}/api/auberges`);
     auberges = await res.json();
-    const sel = $('fCommissionAuberge');
-    const current = sel.value;
-    sel.innerHTML = auberges.map((a) => `<option value="${a.id}">${escapeHtml(a.name)}</option>`).join('');
-    if (auberges.some((a) => String(a.id) === current)) sel.value = current;
-    renderCommissionLedger();
+    fillCommissionSelect($('fCommissionSearch') ? $('fCommissionSearch').value : '');
   } catch (e) { /* ignore */ }
+}
+
+function fillCommissionSelect(filter) {
+  const sel = $('fCommissionAuberge');
+  const q = (filter || '').toLowerCase().trim();
+  const matches = auberges.filter((a) => a.name.toLowerCase().includes(q));
+  const current = sel.value;
+  sel.innerHTML = matches.map((a) => `<option value="${a.id}">${escapeHtml(a.name)}</option>`).join('');
+  if (matches.some((a) => String(a.id) === current)) sel.value = current;
+  renderCommissionLedger();
 }
 
 async function renderCommissionLedger() {
@@ -1589,57 +1600,201 @@ async function renderCommissionLedger() {
       return;
     }
 
-    const rows = ledger.combined.length
-      ? ledger.combined.map((r) => `
-        <div style="display:grid;grid-template-columns:80px 1fr 70px 70px 80px 24px;gap:6px;font-size:12.5px;padding:6px 0;border-bottom:1px solid #f3f4f6;align-items:center;">
-          <span>${escapeHtml(String(r.date))}</span>
-          <span>${escapeHtml(r.label)}</span>
-          <span style="color:#b45309;">${r.debit ? fmtMoney(r.debit) : ''}</span>
-          <span style="color:#16a34a;">${r.credit ? fmtMoney(r.credit) : ''}</span>
-          <span style="font-weight:700;">${fmtMoney(r.solde)}</span>
-          <span>${r.creditId ? `<button data-credit-del="${r.creditId}" style="color:#dc2626;background:none;border:none;font-size:13px;">✕</button>` : ''}</span>
-        </div>`).join('')
-      : '<p style="font-size:13px;color:#9ca3af;padding:8px 0;">Aucun mouvement pour cette auberge.</p>';
+    const GRID = 'display:grid;grid-template-columns:74px 1fr 48px 48px 66px 66px 74px 22px;gap:4px;align-items:center;';
+    const inp = 'width:100%;border:1px solid transparent;background:transparent;border-radius:6px;padding:6px 5px;font-size:12px;font-family:inherit;';
+
+    const rows = ledger.combined.map((r) => `
+      <div class="commRow" data-id="${r.id}" style="${GRID}padding:2px 0;border-bottom:1px solid #f3f4f6;">
+        <input class="commCell" data-f="date" value="${escapeHtml(r.date || '')}" placeholder="jj/mm" style="${inp}color:#6b7280;">
+        <input class="commCell" data-f="pack" value="${escapeHtml(r.pack || '')}" placeholder="pack" style="${inp}color:#374151;">
+        <input class="commCell" data-f="homme" type="number" min="0" value="${r.homme || 0}" style="${inp}color:#2563eb;font-weight:700;text-align:center;">
+        <input class="commCell" data-f="femme" type="number" min="0" value="${r.femme || 0}" style="${inp}color:#db2777;font-weight:700;text-align:center;">
+        <input class="commCell" data-f="debit" type="number" value="${r.debit || 0}" style="${inp}color:#b45309;font-weight:600;">
+        <input class="commCell" data-f="credit" type="number" value="${r.credit || 0}" style="${inp}color:#16a34a;font-weight:600;">
+        <span class="commSolde" style="font-weight:800;color:#5a3823;font-size:12px;padding-left:4px;">${fmtMoney(r.solde)}</span>
+        <button data-entry-del="${r.id}" style="color:#dc2626;background:none;border:none;font-size:14px;cursor:pointer;">✕</button>
+      </div>`).join('');
 
     wrap.innerHTML = `
-      <div style="background:#f9f6f0;border-radius:10px;padding:12px;margin-bottom:14px;display:flex;justify-content:space-between;gap:10px;">
-        <div><div style="font-size:11px;color:#9ca3af;">Total du</div><div style="font-weight:700;color:#b45309;">${fmtMoney(ledger.totalDebit)}</div></div>
-        <div><div style="font-size:11px;color:#9ca3af;">Total paye</div><div style="font-weight:700;color:#16a34a;">${fmtMoney(ledger.totalCredit)}</div></div>
-        <div><div style="font-size:11px;color:#9ca3af;">Solde restant</div><div style="font-weight:800;color:#5a3823;">${fmtMoney(ledger.solde)}</div></div>
+      <div style="background:#f9f6f0;border-radius:10px;padding:12px;margin-bottom:12px;display:flex;justify-content:space-between;gap:10px;">
+        <div><div style="font-size:11px;color:#9ca3af;">Total du</div><div id="cTotDu" style="font-weight:700;color:#b45309;">${fmtMoney(ledger.totalDebit)}</div></div>
+        <div><div style="font-size:11px;color:#9ca3af;">Total paye</div><div id="cTotPaye" style="font-weight:700;color:#16a34a;">${fmtMoney(ledger.totalCredit)}</div></div>
+        <div><div style="font-size:11px;color:#9ca3af;">Solde restant</div><div id="cTotSolde" style="font-weight:800;color:#5a3823;">${fmtMoney(ledger.solde)}</div></div>
       </div>
-      <div style="display:grid;grid-template-columns:80px 1fr 70px 70px 80px 24px;gap:6px;font-size:11px;font-weight:700;color:#5a3823;padding-bottom:6px;border-bottom:2px solid #e5e7eb;">
-        <span>Date</span><span>Detail</span><span>Du</span><span>Paye</span><span>Solde</span><span></span>
+      <div style="${GRID}font-size:10px;font-weight:700;color:#fff;background:#5a3823;border-radius:8px 8px 0 0;padding:9px 6px;text-transform:uppercase;letter-spacing:.3px;">
+        <span>Date</span><span>Pack</span><span>H</span><span>F</span><span>Debit</span><span>Credit</span><span>Solde</span><span></span>
       </div>
-      ${rows}
-      <div style="display:flex;gap:6px;margin-top:14px;">
-        <input id="fCreditDate" type="date" value="${currentDate}" style="padding:8px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;">
-        <input id="fCreditAmount" type="number" placeholder="Montant paye" style="flex:1;padding:8px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;">
-        <button id="addCreditBtn" class="btn-secondary" style="padding:8px 12px;margin:0;">+ Enregistrer paiement</button>
+      <div id="commRows" style="padding:0 6px;">${rows || '<p style="font-size:13px;color:#9ca3af;padding:8px 0;">Aucune ligne. Ajoute-en une ou importe les reservations.</p>'}</div>
+      <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;">
+        <button id="addEntryBtn" class="btn-secondary" style="padding:9px 14px;margin:0;">+ Ajouter une ligne</button>
+        <button id="importResBtn" class="btn-secondary" style="padding:9px 14px;margin:0;background:#efe7d9;color:#5a3823;">⤓ Importer les reservations</button>
       </div>
+      <p style="font-size:11.5px;color:#9c8f78;margin-top:10px;line-height:1.5;">Clique sur n'importe quelle case pour la modifier — c'est enregistre automatiquement. Le solde et les totaux se recalculent tout seuls.</p>
     `;
-    $('addCreditBtn').addEventListener('click', addCredit);
-    wrap.querySelectorAll('[data-credit-del]').forEach((btn) => {
+
+    const opening = ledger.opening || 0;
+    function recompute() {
+      let solde = opening, du = opening > 0 ? opening : 0, paye = opening < 0 ? -opening : 0;
+      wrap.querySelectorAll('.commRow').forEach((row) => {
+        const d = parseFloat(row.querySelector('[data-f="debit"]').value) || 0;
+        const c = parseFloat(row.querySelector('[data-f="credit"]').value) || 0;
+        solde += d - c; du += d; paye += c;
+        row.querySelector('.commSolde').textContent = fmtMoney(solde);
+      });
+      $('cTotDu').textContent = fmtMoney(du);
+      $('cTotPaye').textContent = fmtMoney(paye);
+      $('cTotSolde').textContent = fmtMoney(du - paye);
+    }
+
+    wrap.querySelectorAll('.commCell').forEach((cell) => {
+      cell.addEventListener('input', recompute);
+      cell.addEventListener('change', async () => {
+        const row = cell.closest('.commRow');
+        const id = row.dataset.id;
+        const f = cell.dataset.f;
+        let val = cell.value;
+        if (f === 'homme' || f === 'femme' || f === 'debit' || f === 'credit') val = parseFloat(val) || 0;
+        try {
+          await authFetch(`${API}/api/commission/entries/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ [f]: val }),
+          });
+        } catch (e) { /* garde la valeur a l'ecran */ }
+      });
+    });
+
+    wrap.querySelectorAll('[data-entry-del]').forEach((btn) => {
       btn.addEventListener('click', async () => {
-        await authFetch(`${API}/api/commission/credits/${btn.dataset.creditDel}`, { method: 'DELETE' });
+        await authFetch(`${API}/api/commission/entries/${btn.dataset.entryDel}`, { method: 'DELETE' });
         renderCommissionLedger();
       });
+    });
+
+    $('addEntryBtn').addEventListener('click', async () => {
+      await authFetch(`${API}/api/commission/entries`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ auberge_id: sel.value, date: currentDate, pack: '', homme: 0, femme: 0, debit: 0, credit: 0 }),
+      });
+      await renderCommissionLedger();
+      const cells = wrap.querySelectorAll('.commRow:last-child .commCell');
+      if (cells.length) cells[1].focus();
+    });
+
+    $('importResBtn').addEventListener('click', async () => {
+      const btn = $('importResBtn');
+      btn.textContent = 'Import...'; btn.disabled = true;
+      try {
+        const r = await authFetch(`${API}/api/commission/${sel.value}/import`, { method: 'POST' });
+        const out = await r.json();
+        await renderCommissionLedger();
+        if (out.added === 0) alert('Aucune nouvelle reservation a importer.');
+      } catch (e) {
+        alert('Erreur lors de l\'import.');
+        btn.textContent = '⤓ Importer les reservations'; btn.disabled = false;
+      }
     });
   } catch (e) {
     wrap.innerHTML = '<p style="color:#dc2626;font-size:13px;">Erreur de chargement.</p>';
   }
 }
 
-async function addCredit() {
-  const sel = $('fCommissionAuberge');
-  const date = $('fCreditDate').value;
-  const amount = parseFloat($('fCreditAmount').value);
-  if (!sel.value || !date || isNaN(amount)) return;
-  await authFetch(`${API}/api/commission/credits`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ auberge_id: sel.value, date, amount, note: 'Paiement effectue' }),
-  });
-  renderCommissionLedger();
+// ---------- Solde global (tableau de bord : total auto a rendre aux auberges) ----------
+async function renderSoldeGlobal() {
+  const wrap = $('soldeBody');
+  wrap.innerHTML = '<p style="color:#6b7280;font-size:13px;">Chargement...</p>';
+  try {
+    const res = await authFetch(`${API}/api/commission-global`);
+    const d = await res.json();
+    if (!res.ok) { wrap.innerHTML = `<p style="color:#dc2626;font-size:13px;">${d.error || 'Erreur'}</p>`; return; }
+
+    const aubRows = d.auberges.map((a) => `
+      <div class="soldeRow" data-id="${a.id}" data-name="${escapeHtml(a.name)}" data-bal="${a.balance}" style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid #f2ede4;">
+        <span style="flex:1;font-weight:600;font-size:14px;color:#374151;">${escapeHtml(a.name)}</span>
+        <span style="font-weight:800;color:#b45309;font-size:15px;white-space:nowrap;">${fmtMoney(a.balance)}</span>
+        <button data-pay="${a.id}" style="padding:7px 11px;border:none;border-radius:9px;background:#efe7d9;color:#5a3823;font-weight:700;font-size:12px;cursor:pointer;">A pris son argent</button>
+      </div>`).join('');
+
+    const histRows = d.history.map((h) => {
+      const isSoins = /client/i.test(h.motive || '');
+      const badge = h.motive ? `<span style="font-size:11px;color:#9ca3af;">${isSoins ? '🧖 ' : '💵 '}${escapeHtml(h.motive)}</span>` : '';
+      return `
+      <div style="display:flex;justify-content:space-between;gap:10px;padding:10px 14px;border-bottom:1px solid #f6f2ea;font-size:13px;align-items:center;">
+        <span style="color:#9ca3af;font-size:12px;white-space:nowrap;">${escapeHtml(String(h.date || ''))}</span>
+        <span style="flex:1;color:#374151;">${escapeHtml(h.auberge)}<br>${badge}</span>
+        <span style="font-weight:700;color:#16a34a;white-space:nowrap;">-${fmtMoney(h.amount)}</span>
+      </div>`;
+    }).join('');
+
+    const fmtDay = (s) => { if (!s) return ''; const p = String(s).split('-'); return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : s; };
+    const dailyRows = (d.dailyHistory || []).map((x) => `
+      <div style="display:flex;justify-content:space-between;gap:10px;padding:10px 14px;border-bottom:1px solid #f6f2ea;font-size:13px;">
+        <span style="color:#374151;">${fmtDay(x.date)}</span>
+        <span style="font-weight:700;color:#b45309;white-space:nowrap;">+${fmtMoney(x.total)}</span>
+      </div>`).join('');
+
+    wrap.innerHTML = `
+      <div style="background:linear-gradient(135deg,#5a3823,#7a4a2c);color:#fff;border-radius:18px;padding:22px;margin-bottom:14px;box-shadow:0 10px 30px rgba(90,56,35,.25);">
+        <div style="font-size:12.5px;color:#e8d5bf;text-transform:uppercase;letter-spacing:1px;">Total a rendre aux auberges</div>
+        <div style="font-size:38px;font-weight:800;margin-top:4px;letter-spacing:-1px;">${fmtMoney(d.total)}</div>
+        <div style="font-size:12.5px;color:#e0cbb0;margin-top:6px;">calcule automatiquement &middot; ${d.auberges.length} auberges</div>
+      </div>
+
+      <div style="background:#fff;border:2px solid #f0c893;border-radius:16px;padding:18px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+        <div>
+          <div style="font-size:12px;color:#a08a6a;text-transform:uppercase;letter-spacing:.5px;">Commissions du jour</div>
+          <div style="font-size:12px;color:#9ca3af;margin-top:2px;">ajoutées automatiquement aujourd'hui</div>
+        </div>
+        <div style="font-size:30px;font-weight:800;color:#b45309;white-space:nowrap;">${fmtMoney(d.todayTotal)}</div>
+      </div>
+
+      <p style="font-size:13px;font-weight:800;color:#5a3823;text-transform:uppercase;letter-spacing:.5px;margin:6px 2px 10px;">Les auberges a payer</p>
+      <div style="background:#fff;border:1px solid #eee;border-radius:14px;overflow:hidden;">${aubRows || '<div style="padding:16px;color:#9ca3af;text-align:center;">Aucune auberge a payer.</div>'}</div>
+
+      <p style="font-size:13px;font-weight:800;color:#5a3823;text-transform:uppercase;letter-spacing:.5px;margin:20px 2px 10px;">Commissions par jour (évolution)</p>
+      <div style="background:#fff;border:1px solid #eee;border-radius:14px;overflow:hidden;">${dailyRows || '<div style="padding:14px;color:#9ca3af;text-align:center;">Aucune commission enregistrée.</div>'}</div>
+
+      <p style="font-size:13px;font-weight:800;color:#5a3823;text-transform:uppercase;letter-spacing:.5px;margin:20px 2px 10px;">Derniers retraits</p>
+      <div style="background:#fff;border:1px solid #eee;border-radius:14px;overflow:hidden;">${histRows || '<div style="padding:14px;color:#9ca3af;text-align:center;">Aucun retrait.</div>'}</div>
+      <p style="font-size:11.5px;color:#9c8f78;margin-top:12px;line-height:1.5;">Le total se calcule tout seul (somme des soldes de toutes les auberges). Quand une auberge prend son argent, clique sur sa ligne : le total baisse automatiquement.</p>
+    `;
+
+    wrap.querySelectorAll('[data-pay]').forEach((btn) => {
+      btn.addEventListener('click', () => openSoldePayout(btn.closest('.soldeRow')));
+    });
+  } catch (e) {
+    wrap.innerHTML = '<p style="color:#dc2626;font-size:13px;">Erreur de chargement.</p>';
+  }
+}
+
+function openSoldePayout(row) {
+  if (row.nextElementSibling && row.nextElementSibling.classList.contains('payBox')) return;
+  const id = row.dataset.id;
+  const bal = parseFloat(row.dataset.bal) || 0;
+  const box = document.createElement('div');
+  box.className = 'payBox';
+  box.style.cssText = 'display:flex;gap:6px;align-items:center;padding:10px 14px;background:#faf6ef;border-bottom:1px solid #f2ede4;flex-wrap:wrap;';
+  box.innerHTML = `
+    <span style="font-size:13px;color:#7a6650;width:100%;">Montant retiré du solde :</span>
+    <input type="number" class="payAmt" value="${Math.round(bal)}" style="padding:8px;border:1px solid #d9cbb2;border-radius:8px;font-size:14px;width:110px;">
+    <button class="payCash" style="padding:8px 12px;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;background:#166534;color:#fff;">💵 A pris son argent</button>
+    <button class="paySoins" style="padding:8px 12px;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;background:#7c3aed;color:#fff;">🧖 A payé pour ses clients</button>
+    <button class="payCancel" style="padding:8px 12px;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;background:none;color:#9ca3af;">Annuler</button>`;
+  row.insertAdjacentElement('afterend', box);
+  box.querySelector('.payCancel').addEventListener('click', () => box.remove());
+  const doPayout = async (motive) => {
+    const amt = parseFloat(box.querySelector('.payAmt').value) || 0;
+    if (amt <= 0) { box.remove(); return; }
+    await authFetch(`${API}/api/commission/entries`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ auberge_id: id, date: currentDate, pack: motive, homme: 0, femme: 0, debit: 0, credit: amt }),
+    });
+    renderSoldeGlobal();
+  };
+  box.querySelector('.payCash').addEventListener('click', () => doPayout('A pris son argent'));
+  box.querySelector('.paySoins').addEventListener('click', () => doPayout('Payé pour ses clients'));
 }
 
 init();

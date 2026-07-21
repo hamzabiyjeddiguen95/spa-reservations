@@ -106,3 +106,20 @@ CREATE TABLE IF NOT EXISTS commission_credits (
   created_at TIMESTAMP DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_commission_credits_auberge ON commission_credits(auberge_id);
+
+-- Lignes de commission entierement modifiables a la main (comme l'Excel Details)
+CREATE TABLE IF NOT EXISTS commission_entries (
+  id SERIAL PRIMARY KEY,
+  auberge_id INTEGER NOT NULL REFERENCES auberges(id) ON DELETE CASCADE,
+  date DATE,
+  pack TEXT,
+  homme INTEGER NOT NULL DEFAULT 0,
+  femme INTEGER NOT NULL DEFAULT 0,
+  debit NUMERIC(10,2) NOT NULL DEFAULT 0,
+  credit NUMERIC(10,2) NOT NULL DEFAULT 0,
+  source TEXT NOT NULL DEFAULT 'manual',        -- 'manual' ou 'reservation'
+  reservation_id INTEGER REFERENCES reservations(id) ON DELETE SET NULL,
+  position INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_commission_entries_auberge ON commission_entries(auberge_id);

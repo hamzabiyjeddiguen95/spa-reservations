@@ -42,6 +42,7 @@
       <button class="sidebar-item active" data-view="reservations">📅 Reservations</button>
       <button class="sidebar-item" data-view="caisse">💰 Caisse</button>
       <button class="sidebar-item" data-view="auberges">🏨 Auberges</button>
+      <button class="sidebar-item" data-view="solde">💵 Solde auberges</button>
       <button class="sidebar-item" data-view="commission">📋 Commission</button>
     </nav>
   </aside>
@@ -119,9 +120,15 @@
   <div id="viewCommission" style="display:none;padding:16px;">
     <h2 style="margin-bottom:14px;color:#5a3823;">📋 Commission</h2>
     <div style="max-width:520px;">
+      <input id="fCommissionSearch" type="text" placeholder="🔍 Rechercher une auberge..." style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;margin-bottom:8px;">
       <select id="fCommissionAuberge" style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;margin-bottom:14px;"></select>
       <div id="commissionBody"></div>
     </div>
+  </div>
+
+  <div id="viewSolde" style="display:none;padding:16px;">
+    <h2 style="margin-bottom:14px;color:#5a3823;">💵 Solde auberges</h2>
+    <div style="max-width:560px;" id="soldeBody"></div>
   </div>
 </div>
 
