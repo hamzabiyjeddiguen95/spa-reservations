@@ -445,6 +445,23 @@ app.delete('/api/auberges/:id', auth, async (req, res) => {
   res.json({ ok: true });
 });
 
+app.put('/api/auberges/:id', auth, async (req, res) => {
+  const { name } = req.body;
+  if (!name || !name.trim()) return res.status(400).json({ error: 'Nom requis' });
+  try {
+    const { rows } = await pool.query(
+      'UPDATE auberges SET name=$1 WHERE id=$2 RETURNING *',
+      [name.trim(), req.params.id]
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'Auberge introuvable' });
+    res.json(rows[0]);
+  } catch (e) {
+    if (e.code === '23505') return res.status(409).json({ error: 'Ce nom existe deja.' });
+    console.error(e);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 // ---------- Commission (releve Debit/Credit/Solde par auberge) ----------
 app.get('/api/commission/:aubergeId', auth, async (req, res) => {
   const { aubergeId } = req.params;

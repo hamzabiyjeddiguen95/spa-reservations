@@ -1489,14 +1489,58 @@ function renderAubergesList() {
   const filtered = search ? auberges.filter((a) => a.name.toLowerCase().includes(search)) : auberges;
   const wrap = $('aubergesList');
   wrap.innerHTML = filtered.length
-    ? filtered.map((a) => `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px;border:1px solid #e5e7eb;border-radius:8px;margin-bottom:6px;font-size:14px;"><span>${escapeHtml(a.name)}</span><button data-auberge-del="${a.id}" style="color:#dc2626;background:none;border:none;font-size:15px;">✕</button></div>`).join('')
+    ? filtered.map((a) => `
+      <div class="auberge-row" data-auberge-row="${a.id}" style="display:flex;justify-content:space-between;align-items:center;padding:10px;border:1px solid #e5e7eb;border-radius:8px;margin-bottom:6px;font-size:14px;">
+        <span class="auberge-name-display">${escapeHtml(a.name)}</span>
+        <div style="display:flex;gap:10px;">
+          <button data-auberge-edit="${a.id}" style="color:#5a3823;background:none;border:none;font-size:14px;">✏️</button>
+          <button data-auberge-del="${a.id}" style="color:#dc2626;background:none;border:none;font-size:15px;">✕</button>
+        </div>
+      </div>`).join('')
     : '<p style="font-size:13px;color:#9ca3af;">Aucune auberge trouvee.</p>';
+
   wrap.querySelectorAll('[data-auberge-del]').forEach((btn) => {
     btn.addEventListener('click', async () => {
       await authFetch(`${API}/api/auberges/${btn.dataset.aubergeDel}`, { method: 'DELETE' });
       loadAuberges();
     });
   });
+
+  wrap.querySelectorAll('[data-auberge-edit]').forEach((btn) => {
+    btn.addEventListener('click', () => startEditAuberge(btn.dataset.aubergeEdit));
+  });
+}
+
+function startEditAuberge(id) {
+  const auberge = auberges.find((a) => String(a.id) === String(id));
+  if (!auberge) return;
+  const row = document.querySelector(`[data-auberge-row="${id}"]`);
+  row.innerHTML = `
+    <input id="fEditAubergeName" type="text" value="${escapeHtml(auberge.name)}" style="flex:1;padding:6px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;margin-right:8px;">
+    <div style="display:flex;gap:8px;">
+      <button id="saveEditAubergeBtn" style="color:#16a34a;background:none;border:none;font-size:14px;font-weight:700;">✓</button>
+      <button id="cancelEditAubergeBtn" style="color:#6b7280;background:none;border:none;font-size:14px;">✕</button>
+    </div>
+  `;
+  $('saveEditAubergeBtn').addEventListener('click', () => saveEditAuberge(id));
+  $('cancelEditAubergeBtn').addEventListener('click', renderAubergesList);
+  $('fEditAubergeName').focus();
+}
+
+async function saveEditAuberge(id) {
+  const newName = $('fEditAubergeName').value.trim();
+  if (!newName) return;
+  const res = await authFetch(`${API}/api/auberges/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: newName }),
+  });
+  if (!res.ok) {
+    const data = await res.json();
+    alert(data.error || 'Erreur.');
+    return;
+  }
+  loadAuberges();
 }
 
 async function addAuberge() {
@@ -1547,12 +1591,13 @@ async function renderCommissionLedger() {
 
     const rows = ledger.combined.length
       ? ledger.combined.map((r) => `
-        <div style="display:grid;grid-template-columns:80px 1fr 70px 70px 80px;gap:6px;font-size:12.5px;padding:6px 0;border-bottom:1px solid #f3f4f6;align-items:center;">
+        <div style="display:grid;grid-template-columns:80px 1fr 70px 70px 80px 24px;gap:6px;font-size:12.5px;padding:6px 0;border-bottom:1px solid #f3f4f6;align-items:center;">
           <span>${escapeHtml(String(r.date))}</span>
           <span>${escapeHtml(r.label)}</span>
           <span style="color:#b45309;">${r.debit ? fmtMoney(r.debit) : ''}</span>
           <span style="color:#16a34a;">${r.credit ? fmtMoney(r.credit) : ''}</span>
           <span style="font-weight:700;">${fmtMoney(r.solde)}</span>
+          <span>${r.creditId ? `<button data-credit-del="${r.creditId}" style="color:#dc2626;background:none;border:none;font-size:13px;">✕</button>` : ''}</span>
         </div>`).join('')
       : '<p style="font-size:13px;color:#9ca3af;padding:8px 0;">Aucun mouvement pour cette auberge.</p>';
 
@@ -1562,8 +1607,8 @@ async function renderCommissionLedger() {
         <div><div style="font-size:11px;color:#9ca3af;">Total paye</div><div style="font-weight:700;color:#16a34a;">${fmtMoney(ledger.totalCredit)}</div></div>
         <div><div style="font-size:11px;color:#9ca3af;">Solde restant</div><div style="font-weight:800;color:#5a3823;">${fmtMoney(ledger.solde)}</div></div>
       </div>
-      <div style="display:grid;grid-template-columns:80px 1fr 70px 70px 80px;gap:6px;font-size:11px;font-weight:700;color:#5a3823;padding-bottom:6px;border-bottom:2px solid #e5e7eb;">
-        <span>Date</span><span>Detail</span><span>Du</span><span>Paye</span><span>Solde</span>
+      <div style="display:grid;grid-template-columns:80px 1fr 70px 70px 80px 24px;gap:6px;font-size:11px;font-weight:700;color:#5a3823;padding-bottom:6px;border-bottom:2px solid #e5e7eb;">
+        <span>Date</span><span>Detail</span><span>Du</span><span>Paye</span><span>Solde</span><span></span>
       </div>
       ${rows}
       <div style="display:flex;gap:6px;margin-top:14px;">
@@ -1573,6 +1618,12 @@ async function renderCommissionLedger() {
       </div>
     `;
     $('addCreditBtn').addEventListener('click', addCredit);
+    wrap.querySelectorAll('[data-credit-del]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        await authFetch(`${API}/api/commission/credits/${btn.dataset.creditDel}`, { method: 'DELETE' });
+        renderCommissionLedger();
+      });
+    });
   } catch (e) {
     wrap.innerHTML = '<p style="color:#dc2626;font-size:13px;">Erreur de chargement.</p>';
   }
