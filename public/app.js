@@ -671,7 +671,7 @@ function renderCashDay() {
         <input type="checkbox" id="fHananOff" style="width:auto;margin:0;" ${d.hananOff ? 'checked' : ''}>
         Hanan en repos aujourd'hui (ne touche rien)
       </label>
-      <div style="display:flex;justify-content:space-between;font-weight:700;font-size:14px;margin-top:6px;"><span>Hanan</span><span>${fmtMoney(d.hanan)}</span></div>
+      <div style="display:flex;justify-content:space-between;font-weight:700;font-size:14px;margin-top:6px;"><span>Hanan</span><span id="hananAmount">${fmtMoney(d.hanan)}</span></div>
     </div>
 
     <div style="margin-bottom:14px;">
@@ -680,8 +680,8 @@ function renderCashDay() {
     </div>
 
     <div style="margin-bottom:14px;">
-      <p style="font-weight:700;font-size:13.5px;color:#5a3823;margin-bottom:4px;">Charges - total ${fmtMoney(d.chargesTotal)}</p>
-      ${chargeRows}
+      <p style="font-weight:700;font-size:13.5px;color:#5a3823;margin-bottom:4px;">Charges - total <span id="chargesTotalAmount">${fmtMoney(d.chargesTotal)}</span></p>
+      <div id="chargesListWrap">${chargeRows}</div>
       <div style="display:flex;gap:6px;margin-top:8px;">
         <input id="fChargeLabel" type="text" placeholder="Label" style="flex:2;padding:8px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;">
         <input id="fChargeAmount" type="number" placeholder="Montant" style="flex:1;padding:8px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;">
@@ -691,8 +691,8 @@ function renderCashDay() {
 
     <hr style="border:none;border-top:1px solid #e5e7eb;margin:14px 0;">
 
-    <div style="display:flex;justify-content:space-between;font-weight:700;font-size:16px;margin-bottom:6px;"><span>Reste du jour</span><span>${fmtMoney(d.reste)}</span></div>
-    <div style="display:flex;justify-content:space-between;font-weight:800;font-size:17px;color:#5a3823;"><span>Total general</span><span>${fmtMoney(d.cumulativeTotal)}</span></div>
+    <div style="display:flex;justify-content:space-between;font-weight:700;font-size:16px;margin-bottom:6px;"><span>Reste du jour</span><span id="resteAmount">${fmtMoney(d.reste)}</span></div>
+    <div style="display:flex;justify-content:space-between;font-weight:800;font-size:17px;color:#5a3823;"><span>Total general</span><span id="totalGeneralAmount">${fmtMoney(d.cumulativeTotal)}</span></div>
   `;
 
   $('fHananOff').addEventListener('change', async () => {
@@ -701,7 +701,7 @@ function renderCashDay() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ date: d.date, hanan_off: $('fHananOff').checked }),
     });
-    loadCashDay(d.date);
+    updateChargesAndTotals(d.date);
   });
 
   $('addChargeBtn').addEventListener('click', async () => {
@@ -713,15 +713,43 @@ function renderCashDay() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ date: d.date, label, amount }),
     });
-    loadCashDay(d.date);
+    $('fChargeLabel').value = '';
+    $('fChargeAmount').value = '';
+    updateChargesAndTotals(d.date);
   });
 
-  wrap.querySelectorAll('[data-charge-del]').forEach((btn) => {
+  bindChargeDeleteButtons(d.date);
+}
+
+function bindChargeDeleteButtons(date) {
+  $('chargesListWrap').querySelectorAll('[data-charge-del]').forEach((btn) => {
     btn.addEventListener('click', async () => {
       await authFetch(`${API}/api/cash-day/charges/${btn.dataset.chargeDel}`, { method: 'DELETE' });
-      loadCashDay(d.date);
+      updateChargesAndTotals(date);
     });
   });
+}
+
+// Mise a jour rapide (sans clignotement) apres ajout/suppression d'une charge ou toggle Hanan :
+// on ne touche qu'aux zones concernees (Charges, Hanan, Reste, Total general), pas tout le panneau.
+async function updateChargesAndTotals(date) {
+  try {
+    const res = await authFetch(`${API}/api/cash-day?date=${date}`);
+    const data = await res.json();
+    if (!res.ok) return;
+    cashDayData = data;
+
+    const chargeRows = data.charges.length
+      ? data.charges.map((c) => `<div style="display:flex;justify-content:space-between;align-items:center;font-size:13.5px;padding:3px 0;"><span>${escapeHtml(c.label)}</span><span style="display:flex;align-items:center;gap:8px;">${fmtMoney(parseFloat(c.amount))} <button data-charge-del="${c.id}" style="color:#dc2626;background:none;border:none;font-size:14px;padding:0;">✕</button></span></div>`).join('')
+      : '<p style="font-size:13px;color:#9ca3af;">Aucune charge ajoutee.</p>';
+
+    $('chargesListWrap').innerHTML = chargeRows;
+    $('chargesTotalAmount').textContent = fmtMoney(data.chargesTotal);
+    $('hananAmount').textContent = fmtMoney(data.hanan);
+    $('resteAmount').textContent = fmtMoney(data.reste);
+    $('totalGeneralAmount').textContent = fmtMoney(data.cumulativeTotal);
+    bindChargeDeleteButtons(date);
+  } catch (e) { /* ignore */ }
 }
 
 function showLogin() {
