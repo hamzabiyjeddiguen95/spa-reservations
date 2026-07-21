@@ -719,6 +719,33 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// ---------- Migration auto au demarrage : cree les tables manquantes ----------
+async function ensureTables() {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS commission_entries (
+        id SERIAL PRIMARY KEY,
+        auberge_id INTEGER NOT NULL REFERENCES auberges(id) ON DELETE CASCADE,
+        date DATE,
+        pack TEXT,
+        homme INTEGER NOT NULL DEFAULT 0,
+        femme INTEGER NOT NULL DEFAULT 0,
+        debit NUMERIC(10,2) NOT NULL DEFAULT 0,
+        credit NUMERIC(10,2) NOT NULL DEFAULT 0,
+        source TEXT NOT NULL DEFAULT 'manual',
+        reservation_id INTEGER REFERENCES reservations(id) ON DELETE SET NULL,
+        position INTEGER NOT NULL DEFAULT 0,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+    `);
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_commission_entries_auberge ON commission_entries(auberge_id);');
+    console.log('Table commission_entries prete.');
+  } catch (e) {
+    console.error('Erreur migration commission_entries:', e.message);
+  }
+}
+
 app.listen(PORT, () => {
   console.log(`Serveur demarre sur le port ${PORT}`);
+  ensureTables();
 });
