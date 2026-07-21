@@ -4,6 +4,7 @@ const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const path = require('path');
+const fs = require('fs');
 const { Pool } = require('pg');
 
 const app = express();
@@ -745,7 +746,44 @@ async function ensureTables() {
   }
 }
 
-app.listen(PORT, () => {
+// ---------- Import unique de l'historique Excel (une seule fois, si la table est vide) ----------
+async function importCommissionHistory() {
+  try {
+    const { rows: cnt } = await pool.query('SELECT COUNT(*)::int AS n FROM commission_entries');
+    if (cnt[0].n > 0) return; // deja des donnees -> on ne reimporte pas
+    const p = path.join(__dirname, 'db', 'commission_history_import.json');
+    if (!fs.existsSync(p)) return;
+    const data = JSON.parse(fs.readFileSync(p, 'utf-8'));
+
+    // L'Excel devient la source unique : on remet tous les soldes d'ouverture a 0
+    await pool.query('UPDATE auberges SET opening_balance=0');
+
+    let total = 0;
+    for (const [name, entries] of Object.entries(data)) {
+      let { rows: a } = await pool.query('SELECT id FROM auberges WHERE lower(trim(name))=lower(trim($1)) LIMIT 1', [name]);
+      let id = a[0] && a[0].id;
+      if (!id) {
+        const ins = await pool.query('INSERT INTO auberges (name, opening_balance) VALUES ($1,0) ON CONFLICT (name) DO NOTHING RETURNING id', [name]);
+        id = ins.rows[0] ? ins.rows[0].id : (await pool.query('SELECT id FROM auberges WHERE lower(trim(name))=lower(trim($1)) LIMIT 1', [name])).rows[0].id;
+      }
+      let pos = 0;
+      for (const e of entries) {
+        pos += 1; total += 1;
+        await pool.query(
+          `INSERT INTO commission_entries (auberge_id, date, pack, homme, femme, debit, credit, source, position)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,'import',$8)`,
+          [id, e.date || null, e.pack || '', e.homme || 0, e.femme || 0, e.debit || 0, e.credit || 0, pos]
+        );
+      }
+    }
+    console.log('Import historique commissions: ' + total + ' lignes.');
+  } catch (e) {
+    console.error('Erreur import historique commissions:', e.message);
+  }
+}
+
+app.listen(PORT, async () => {
   console.log(`Serveur demarre sur le port ${PORT}`);
-  ensureTables();
+  await ensureTables();
+  await importCommissionHistory();
 });

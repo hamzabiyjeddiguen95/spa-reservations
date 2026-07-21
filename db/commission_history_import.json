@@ -1,0 +1,1640 @@
+{
+"AHMED ORIGINAL SURF": [
+{
+"date": "2026-07-17",
+"pack": "massage",
+"homme": 0,
+"femme": 1,
+"debit": 50,
+"credit": 0
+}
+],
+"ORIGINAL SURF ZAHIR": [
+{
+"date": "2026-07-20",
+"pack": "massage",
+"homme": 1,
+"femme": 0,
+"debit": 50,
+"credit": 0
+}
+],
+"AZA SURF": [
+{
+"date": "2026-07-19",
+"pack": "masage",
+"homme": 0,
+"femme": 3,
+"debit": 150,
+"credit": 0
+}
+],
+"SURF STAR": [
+{
+"date": "2026-07-18",
+"pack": "Tazirii",
+"homme": 1,
+"femme": 1,
+"debit": 100,
+"credit": 0
+}
+],
+"AMOUAGE": [
+{
+"date": "2026-07-18",
+"pack": "Taziri",
+"homme": 0,
+"femme": 1,
+"debit": 50,
+"credit": 0
+}
+],
+"SALT HOUSE": [
+{
+"date": "2026-07-17",
+"pack": "massage",
+"homme": 1,
+"femme": 3,
+"debit": 200,
+"credit": 0
+},
+{
+"date": "2026-07-20",
+"pack": "masage",
+"homme": 0,
+"femme": 1,
+"debit": 50,
+"credit": 0
+}
+],
+"SURF & FRIENDS": [
+{
+"date": "2026-07-15",
+"pack": "Massage",
+"homme": 0,
+"femme": 2,
+"debit": 100,
+"credit": 0
+},
+{
+"date": "2026-07-17",
+"pack": "taziri",
+"homme": 0,
+"femme": 1,
+"debit": 50,
+"credit": 0
+},
+{
+"date": "2026-07-18",
+"pack": "Masage",
+"homme": 0,
+"femme": 2,
+"debit": 100,
+"credit": 0
+},
+{
+"date": "2026-07-21",
+"pack": "Massage",
+"homme": 0,
+"femme": 1,
+"debit": 50,
+"credit": 0
+}
+],
+"MANZILI": [
+{
+"date": "2026-07-14",
+"pack": "massage",
+"homme": 0,
+"femme": 1,
+"debit": 50,
+"credit": 0
+},
+{
+"date": "2026-07-17",
+"pack": "massage",
+"homme": 0,
+"femme": 1,
+"debit": 50,
+"credit": 0
+}
+],
+"NOMAYA": [
+{
+"date": "2026-07-13",
+"pack": "Masage",
+"homme": 0,
+"femme": 1,
+"debit": 50,
+"credit": 0
+},
+{
+"date": "2026-07-21",
+"pack": "Masage",
+"homme": 1,
+"femme": 3,
+"debit": 200,
+"credit": 0
+}
+],
+"NABIL TAGHAZOUT VILLA": [
+{
+"date": "2026-07-12",
+"pack": "masage",
+"homme": 0,
+"femme": 1,
+"debit": 50,
+"credit": 0
+}
+],
+"SOFIA CHIBANI": [
+{
+"date": "2026-06-08",
+"pack": "Traditionnel",
+"homme": 1,
+"femme": 0,
+"debit": 50,
+"credit": 0
+}
+],
+"SALTY HOUSE SOUFIANE": [
+{
+"date": "2026-07-07",
+"pack": "masage",
+"homme": 0,
+"femme": 1,
+"debit": 50,
+"credit": 0
+}
+],
+"ISMAIL FIH COMMISSION": [
+{
+"date": "2026-06-07",
+"pack": "Taziri",
+"homme": 0,
+"femme": 2,
+"debit": 100,
+"credit": 0
+}
+],
+"JOUCKE CATAMARAN": [
+{
+"date": "2026-07-05",
+"pack": "massage",
+"homme": 0,
+"femme": 1,
+"debit": 50,
+"credit": 0
+},
+{
+"date": "2026-07-06",
+"pack": "taziri",
+"homme": 0,
+"femme": 1,
+"debit": 50,
+"credit": 0
+}
+],
+"KAMAL SURF CAMP": [
+{
+"date": "2026-06-29",
+"pack": "traditionnel",
+"homme": 0,
+"femme": 2,
+"debit": 100,
+"credit": 0
+}
+],
+"ASMA YUGI SURF": [
+{
+"date": "2026-06-28",
+"pack": "Taziri",
+"homme": 0,
+"femme": 1,
+"debit": 50,
+"credit": 0
+}
+],
+"LAVANIA": [
+{
+"date": "2026-06-27",
+"pack": "Taziri",
+"homme": 1,
+"femme": 0,
+"debit": 50,
+"credit": 0
+}
+],
+"MOANA": [
+{
+"date": "2026-06-27",
+"pack": "Masage",
+"homme": 0,
+"femme": 1,
+"debit": 50,
+"credit": 0
+}
+],
+"NADA RIAD SEARENITY": [
+{
+"date": "2026-06-26",
+"pack": "traditionnel",
+"homme": 0,
+"femme": 3,
+"debit": 150,
+"credit": 0
+}
+],
+"WORLD OF WAVES": [
+{
+"date": "2026-06-20",
+"pack": "",
+"homme": 0,
+"femme": 2,
+"debit": 100,
+"credit": 0
+}
+],
+"YOUSSEF": [
+{
+"date": "2026-06-20",
+"pack": "masage",
+"homme": 1,
+"femme": 0,
+"debit": 50,
+"credit": 0
+}
+],
+"YASSINE PADELL OUT": [
+{
+"date": "2026-06-18",
+"pack": "traditionnel",
+"homme": 1,
+"femme": 2,
+"debit": 150,
+"credit": 0
+}
+],
+"MOUNIR LET US SURF": [
+{
+"date": "2026-06-16",
+"pack": "taziri",
+"homme": 0,
+"femme": 2,
+"debit": 100,
+"credit": 0
+},
+{
+"date": "2026-07-14",
+"pack": "taziri",
+"homme": 0,
+"femme": 2,
+"debit": 100,
+"credit": 0
+},
+{
+"date": "2026-07-20",
+"pack": "Taziri traditional",
+"homme": 0,
+"femme": 2,
+"debit": 100,
+"credit": 0
+}
+],
+"BLUE WAVES": [
+{
+"date": "2026-06-11",
+"pack": "Massage",
+"homme": 1,
+"femme": 1,
+"debit": 100,
+"credit": 0
+},
+{
+"date": "2026-06-27",
+"pack": "Taziri",
+"homme": 1,
+"femme": 1,
+"debit": 100,
+"credit": 0
+},
+{
+"date": "2026-06-28",
+"pack": "Massage",
+"homme": 0,
+"femme": 1,
+"debit": 50,
+"credit": 0
+},
+{
+"date": "2026-06-29",
+"pack": "mirra",
+"homme": 1,
+"femme": 1,
+"debit": 100,
+"credit": 0
+},
+{
+"date": "2026-07-06",
+"pack": "Massage",
+"homme": 1,
+"femme": 1,
+"debit": 100,
+"credit": 0
+},
+{
+"date": "2026-07-09",
+"pack": "Taziru",
+"homme": 0,
+"femme": 3,
+"debit": 150,
+"credit": 0
+},
+{
+"date": "2026-07-12",
+"pack": "Taziri",
+"homme": 0,
+"femme": 1,
+"debit": 50,
+"credit": 0
+}
+],
+"HOLA SURF": [
+{
+"date": "2026-06-09",
+"pack": "Masage",
+"homme": 3,
+"femme": 0,
+"debit": 150,
+"credit": 0
+}
+],
+"VILLA JARDIN SANNA": [
+{
+"date": "2026-06-09",
+"pack": "Taziri",
+"homme": 1,
+"femme": 1,
+"debit": 100,
+"credit": 0
+}
+],
+"HASSAN GUIDE": [
+{
+"date": "2026-06-06",
+"pack": "Taziri",
+"homme": 0,
+"femme": 3,
+"debit": 150,
+"credit": 0
+}
+],
+"BRAHIM IDDOUCH": [
+{
+"date": "2026-05-20",
+"pack": "taziri",
+"homme": 0,
+"femme": 1,
+"debit": 50,
+"credit": 0
+}
+],
+"YOUSSEF SURF BERBER": [
+{
+"date": "2026-05-17",
+"pack": "masage",
+"homme": 0,
+"femme": 2,
+"debit": 100,
+"credit": 0
+},
+{
+"date": "2026-06-10",
+"pack": "Masage",
+"homme": 0,
+"femme": 2,
+"debit": 100,
+"credit": 0
+},
+{
+"date": "2026-07-04",
+"pack": "Masage",
+"homme": 2,
+"femme": 0,
+"debit": 100,
+"credit": 0
+},
+{
+"date": "2026-07-20",
+"pack": "taziri",
+"homme": 0,
+"femme": 1,
+"debit": 50,
+"credit": 0
+}
+],
+"BOUDRA MED": [
+{
+"date": "2026-05-16",
+"pack": "Masage",
+"homme": 0,
+"femme": 3,
+"debit": 150,
+"credit": 0
+}
+],
+"KAREM ROUTE DE MIEL": [
+{
+"date": "2026-05-04",
+"pack": "Royal",
+"homme": 0,
+"femme": 3,
+"debit": 150,
+"credit": 0
+},
+{
+"date": "2026-06-05",
+"pack": "taziri",
+"homme": 0,
+"femme": 1,
+"debit": 50,
+"credit": 0
+},
+{
+"date": "2026-06-17",
+"pack": "royal",
+"homme": 1,
+"femme": 0,
+"debit": 50,
+"credit": 0
+}
+],
+"TAGHAZOUT OCEAN VIEW": [
+{
+"date": "2026-05-01",
+"pack": "massage",
+"homme": 1,
+"femme": 3,
+"debit": 200,
+"credit": 0
+}
+],
+"LAURA ART": [
+{
+"date": "2026-04-29",
+"pack": "Taziri",
+"homme": 0,
+"femme": 1,
+"debit": 50,
+"credit": 0
+}
+],
+"AYURLEA": [
+{
+"date": "2026-04-28",
+"pack": "Taziri",
+"homme": 1,
+"femme": 2,
+"debit": 150,
+"credit": 0
+}
+],
+"MAROC SURF": [
+{
+"date": "2026-04-27",
+"pack": "traditional",
+"homme": 0,
+"femme": 1,
+"debit": 50,
+"credit": 0
+},
+{
+"date": "2026-05-12",
+"pack": "Taziri",
+"homme": 1,
+"femme": 0,
+"debit": 50,
+"credit": 0
+},
+{
+"date": "2026-05-14",
+"pack": "Masage",
+"homme": 1,
+"femme": 0,
+"debit": 50,
+"credit": 0
+},
+{
+"date": "2026-05-15",
+"pack": "massage",
+"homme": 1,
+"femme": 0,
+"debit": 100,
+"credit": 0
+},
+{
+"date": "2026-05-16",
+"pack": "Massage",
+"homme": 0,
+"femme": 1,
+"debit": 50,
+"credit": 0
+},
+{
+"date": "2026-05-19",
+"pack": "massage",
+"homme": 0,
+"femme": 2,
+"debit": 100,
+"credit": 0
+}
+],
+"HAFID FIH COMMISSION": [
+{
+"date": "2026-04-27",
+"pack": "taziri",
+"homme": 0,
+"femme": 3,
+"debit": 150,
+"credit": 0
+},
+{
+"date": "2026-05-24",
+"pack": "masage",
+"homme": 1,
+"femme": 1,
+"debit": 100,
+"credit": 0
+}
+],
+"MAKTUB JALAL": [
+{
+"date": "2026-04-23",
+"pack": "Taziri",
+"homme": 0,
+"femme": 2,
+"debit": 100,
+"credit": 0
+}
+],
+"PLAY GROUND SELIM": [
+{
+"date": "2026-04-22",
+"pack": "Taziri",
+"homme": 0,
+"femme": 1,
+"debit": 50,
+"credit": 0
+}
+],
+"KHALID TAZURI": [
+{
+"date": "2026-04-19",
+"pack": "Masage",
+"homme": 1,
+"femme": 0,
+"debit": 50,
+"credit": 0
+}
+],
+"RIAD TERACORTA AYMANE": [
+{
+"date": "2026-04-15",
+"pack": "masage traditio",
+"homme": 3,
+"femme": 0,
+"debit": 150,
+"credit": 0
+},
+{
+"date": "2026-07-02",
+"pack": "Masage",
+"homme": 1,
+"femme": 0,
+"debit": 50,
+"credit": 0
+},
+{
+"date": "2026-07-04",
+"pack": "Masage",
+"homme": 1,
+"femme": 0,
+"debit": 50,
+"credit": 0
+}
+],
+"MUNGA": [
+{
+"date": "2026-04-10",
+"pack": "massage",
+"homme": 0,
+"femme": 2,
+"debit": 100,
+"credit": 0
+},
+{
+"date": null,
+"pack": "Masage",
+"homme": 0,
+"femme": 2,
+"debit": 100,
+"credit": 0
+},
+{
+"date": "2026-04-26",
+"pack": "Masage",
+"homme": 1,
+"femme": 1,
+"debit": 100,
+"credit": 0
+},
+{
+"date": "2026-04-29",
+"pack": "4 main",
+"homme": 1,
+"femme": 1,
+"debit": 100,
+"credit": 0
+},
+{
+"date": "2026-05-05",
+"pack": "Masage",
+"homme": 1,
+"femme": 1,
+"debit": 100,
+"credit": 0
+},
+{
+"date": "2026-05-06",
+"pack": "",
+"homme": 0,
+"femme": 0,
+"debit": -100,
+"credit": 0
+},
+{
+"date": "2026-05-06",
+"pack": "Masage",
+"homme": 0,
+"femme": 4,
+"debit": 200,
+"credit": 0
+},
+{
+"date": "2026-07-16",
+"pack": "",
+"homme": 0,
+"femme": 0,
+"debit": 50,
+"credit": 0
+}
+],
+"Meryem gardoum": [
+{
+"date": "2026-04-06",
+"pack": "Masage",
+"homme": 1,
+"femme": 0,
+"debit": 50,
+"credit": 0
+}
+],
+"FLOR": [
+{
+"date": "2026-04-05",
+"pack": "taziri",
+"homme": 0,
+"femme": 2,
+"debit": 100,
+"credit": 0
+}
+],
+"AZRAC SURF": [
+{
+"date": "2026-04-04",
+"pack": "masage",
+"homme": 1,
+"femme": 1,
+"debit": 100,
+"credit": 0
+}
+],
+"YOUNICE BASK HOME": [
+{
+"date": "2026-04-03",
+"pack": "massage",
+"homme": 0,
+"femme": 1,
+"debit": 50,
+"credit": 0
+}
+],
+"MUSTAPHA EL HADIM FIH COMMISSIO": [
+{
+"date": "2026-03-26",
+"pack": "traditionnel",
+"homme": 1,
+"femme": 0,
+"debit": 50,
+"credit": 0
+}
+],
+"AMAZIGH HIKE": [
+{
+"date": "2026-03-24",
+"pack": "Masage",
+"homme": 0,
+"femme": 1,
+"debit": 50,
+"credit": 0
+}
+],
+"ARIMA SURF": [
+{
+"date": "2026-03-14",
+"pack": "Traditionnel",
+"homme": 0,
+"femme": 2,
+"debit": 100,
+"credit": 0
+}
+],
+"AMAYOUR": [
+{
+"date": "2026-03-12",
+"pack": "Masage",
+"homme": 2,
+"femme": 6,
+"debit": 800,
+"credit": 0
+},
+{
+"date": "2026-03-15",
+"pack": "Taziri",
+"homme": 1,
+"femme": 1,
+"debit": 100,
+"credit": 0
+},
+{
+"date": "2026-04-16",
+"pack": "Masage",
+"homme": 3,
+"femme": 0,
+"debit": 150,
+"credit": 0
+},
+{
+"date": null,
+"pack": "Mirra",
+"homme": 0,
+"femme": 1,
+"debit": 50,
+"credit": 0
+},
+{
+"date": "2026-05-01",
+"pack": "royal",
+"homme": 1,
+"femme": 1,
+"debit": 100,
+"credit": 0
+},
+{
+"date": "2026-05-06",
+"pack": "Masage",
+"homme": 0,
+"femme": 1,
+"debit": 50,
+"credit": 0
+},
+{
+"date": "2026-05-07",
+"pack": "Masage",
+"homme": 0,
+"femme": 1,
+"debit": 50,
+"credit": 0
+},
+{
+"date": "2026-05-09",
+"pack": "Masage taziri",
+"homme": 1,
+"femme": 1,
+"debit": 500,
+"credit": 0
+},
+{
+"date": "2026-05-11",
+"pack": "Masage mirra royal",
+"homme": 0,
+"femme": 14,
+"debit": 1400,
+"credit": 0
+},
+{
+"date": "2026-05-13",
+"pack": "Masage",
+"homme": 0,
+"femme": 3,
+"debit": 150,
+"credit": 0
+},
+{
+"date": "2026-05-14",
+"pack": "Masage taziri",
+"homme": 0,
+"femme": 6,
+"debit": 600,
+"credit": 0
+},
+{
+"date": "2026-05-15",
+"pack": "ry + califo",
+"homme": 0,
+"femme": 2,
+"debit": 100,
+"credit": 0
+},
+{
+"date": "2026-05-16",
+"pack": "tazirii",
+"homme": 0,
+"femme": 1,
+"debit": 50,
+"credit": 0
+},
+{
+"date": "2026-05-17",
+"pack": "Taziri",
+"homme": 1,
+"femme": 2,
+"debit": 150,
+"credit": 0
+},
+{
+"date": "2026-05-19",
+"pack": "ry+tz",
+"homme": 0,
+"femme": 4,
+"debit": 200,
+"credit": 0
+},
+{
+"date": "2026-05-21",
+"pack": "Taziri",
+"homme": 0,
+"femme": 1,
+"debit": 50,
+"credit": 0
+},
+{
+"date": "2026-05-24",
+"pack": "taziru",
+"homme": 1,
+"femme": 0,
+"debit": 50,
+"credit": 0
+},
+{
+"date": "2026-06-08",
+"pack": "masage",
+"homme": 2,
+"femme": 0,
+"debit": 100,
+"credit": 0
+},
+{
+"date": "2026-06-25",
+"pack": "Taziri",
+"homme": 1,
+"femme": 1,
+"debit": 100,
+"credit": 0
+}
+],
+"SOLVIEG SURFSKTER": [
+{
+"date": "2026-03-10",
+"pack": "masage",
+"homme": 0,
+"femme": 1,
+"debit": 50,
+"credit": 0
+},
+{
+"date": "2026-03-29",
+"pack": "Massage",
+"homme": 0,
+"femme": 1,
+"debit": 50,
+"credit": 0
+},
+{
+"date": "2026-04-14",
+"pack": "Masage",
+"homme": 1,
+"femme": 1,
+"debit": 100,
+"credit": 0
+}
+],
+"Khalid ouhasso yoga": [
+{
+"date": "2026-03-03",
+"pack": "taziri",
+"homme": 1,
+"femme": 1,
+"debit": 100,
+"credit": 0
+}
+],
+"JAMAL FIH COMMISSION": [
+{
+"date": "2026-03-01",
+"pack": "massage",
+"homme": 0,
+"femme": 1,
+"debit": 50,
+"credit": 0
+}
+],
+"CLI SURF": [
+{
+"date": "2026-02-06",
+"pack": "massage",
+"homme": 0,
+"femme": 1,
+"debit": 50,
+"credit": 0
+}
+],
+"ABDO SUNSET SURF": [
+{
+"date": "2026-01-26",
+"pack": "Masage",
+"homme": 3,
+"femme": 0,
+"debit": 150,
+"credit": 0
+}
+],
+"SUNNY SURF RIAD": [
+{
+"date": "2026-01-18",
+"pack": "massage",
+"homme": 1,
+"femme": 0,
+"debit": 50,
+"credit": 0
+}
+],
+"MAROC SURF IMI OUADDAR": [
+{
+"date": "2026-01-03",
+"pack": "massage",
+"homme": 0,
+"femme": 3,
+"debit": 100,
+"credit": 0
+}
+],
+"HICHAM SURF HOUSE DESERT POINT": [
+{
+"date": "2026-01-02",
+"pack": "masage",
+"homme": 1,
+"femme": 1,
+"debit": 100,
+"credit": 0
+},
+{
+"date": "2026-04-04",
+"pack": "Taziri",
+"homme": 1,
+"femme": 2,
+"debit": 150,
+"credit": 0
+},
+{
+"date": "2026-04-12",
+"pack": "Taziri",
+"homme": 2,
+"femme": 1,
+"debit": 150,
+"credit": 0
+}
+],
+"BADI3A": [
+{
+"date": "2025-12-31",
+"pack": "Taziri",
+"homme": 1,
+"femme": 0,
+"debit": 50,
+"credit": 0
+},
+{
+"date": "2026-02-13",
+"pack": "traditionnel",
+"homme": 1,
+"femme": 0,
+"debit": 50,
+"credit": 0
+}
+],
+"MOHAMED HYLE SURF HOUSE": [
+{
+"date": "2025-12-10",
+"pack": "Massage",
+"homme": 0,
+"femme": 1,
+"debit": 50,
+"credit": 0
+},
+{
+"date": "2025-12-16",
+"pack": "Traditional",
+"homme": 1,
+"femme": 0,
+"debit": 50,
+"credit": 0
+},
+{
+"date": "2026-07-02",
+"pack": "Miraa",
+"homme": 0,
+"femme": 1,
+"debit": 50,
+"credit": 0
+}
+],
+"YOUSSEF ALOHA": [
+{
+"date": "2025-12-03",
+"pack": "Taziri + massage",
+"homme": 5,
+"femme": 0,
+"debit": 500,
+"credit": 0
+},
+{
+"date": "2025-12-05",
+"pack": "Taziri",
+"homme": 1,
+"femme": 0,
+"debit": 50,
+"credit": 0
+},
+{
+"date": "2025-12-30",
+"pack": "Traditionnel",
+"homme": 2,
+"femme": 0,
+"debit": 100,
+"credit": 0
+},
+{
+"date": "2026-01-11",
+"pack": "taziri",
+"homme": 0,
+"femme": 1,
+"debit": 50,
+"credit": 0
+},
+{
+"date": "2026-02-13",
+"pack": "massage",
+"homme": 2,
+"femme": 1,
+"debit": 150,
+"credit": 0
+},
+{
+"date": "2026-02-23",
+"pack": "Masage",
+"homme": 1,
+"femme": 0,
+"debit": 50,
+"credit": 0
+},
+{
+"date": "2026-03-04",
+"pack": "masage",
+"homme": 1,
+"femme": 4,
+"debit": 500,
+"credit": 0
+},
+{
+"date": "2026-04-25",
+"pack": "Masage",
+"homme": 1,
+"femme": 1,
+"debit": 100,
+"credit": 0
+},
+{
+"date": "2026-05-13",
+"pack": "Masage",
+"homme": 1,
+"femme": 0,
+"debit": 50,
+"credit": 0
+},
+{
+"date": "2026-05-15",
+"pack": "massage",
+"homme": 1,
+"femme": 0,
+"debit": 50,
+"credit": 0
+},
+{
+"date": "2026-06-12",
+"pack": "royal",
+"homme": 0,
+"femme": 1,
+"debit": 50,
+"credit": 0
+}
+],
+"SURF WITH HICHAM": [
+{
+"date": "2025-11-17",
+"pack": "Massage + taziri",
+"homme": 2,
+"femme": 1,
+"debit": 150,
+"credit": 0
+},
+{
+"date": "2026-04-20",
+"pack": "traditional",
+"homme": 1,
+"femme": 1,
+"debit": 100,
+"credit": 0
+}
+],
+"BRIXTON YOGA GURPRET": [
+{
+"date": "2025-11-13",
+"pack": "Taziri",
+"homme": 1,
+"femme": 1,
+"debit": 100,
+"credit": 0
+},
+{
+"date": "2025-11-15",
+"pack": "Taziri",
+"homme": 0,
+"femme": 3,
+"debit": 150,
+"credit": 0
+},
+{
+"date": "2025-11-17",
+"pack": "Taziri",
+"homme": 0,
+"femme": 1,
+"debit": 50,
+"credit": 0
+},
+{
+"date": "2025-11-18",
+"pack": "Massage",
+"homme": 0,
+"femme": 1,
+"debit": 50,
+"credit": 0
+},
+{
+"date": "2026-11-18",
+"pack": "",
+"homme": 0,
+"femme": 1,
+"debit": 50,
+"credit": 0
+}
+],
+"BOHO SURF": [
+{
+"date": "2025-11-07",
+"pack": "royal",
+"homme": 0,
+"femme": 1,
+"debit": 50,
+"credit": 0
+},
+{
+"date": "2025-11-25",
+"pack": "Massage",
+"homme": 2,
+"femme": 0,
+"debit": 100,
+"credit": 0
+},
+{
+"date": "2025-12-13",
+"pack": "Taziri",
+"homme": 0,
+"femme": 4,
+"debit": 200,
+"credit": 0
+},
+{
+"date": "2025-12-17",
+"pack": "Taziri",
+"homme": 0,
+"femme": 1,
+"debit": 50,
+"credit": 0
+},
+{
+"date": "2026-04-02",
+"pack": "Taziri",
+"homme": 1,
+"femme": 1,
+"debit": 100,
+"credit": 0
+},
+{
+"date": "2026-07-04",
+"pack": "taziri",
+"homme": 0,
+"femme": 1,
+"debit": 50,
+"credit": 0
+}
+],
+"HASSNA RIU": [
+{
+"date": "2025-10-27",
+"pack": "taziri",
+"homme": 0,
+"femme": 4,
+"debit": 200,
+"credit": 0
+}
+],
+"KHALID ALL RIDE": [
+{
+"date": "2025-10-20",
+"pack": "Taziri",
+"homme": 0,
+"femme": 2,
+"debit": 100,
+"credit": 0
+},
+{
+"date": "2025-10-25",
+"pack": "Massage",
+"homme": 0,
+"femme": 2,
+"debit": 100,
+"credit": 0
+},
+{
+"date": "2026-06-09",
+"pack": "Masage",
+"homme": 1,
+"femme": 1,
+"debit": 100,
+"credit": 0
+},
+{
+"date": "2026-07-13",
+"pack": "Masage",
+"homme": 0,
+"femme": 2,
+"debit": 100,
+"credit": 0
+}
+],
+"MOONLIGHT HOSTEL": [
+{
+"date": "2025-09-12",
+"pack": "taziri",
+"homme": 0,
+"femme": 2,
+"debit": 100,
+"credit": 0
+},
+{
+"date": "2026-01-06",
+"pack": "massage",
+"homme": 0,
+"femme": 1,
+"debit": 50,
+"credit": 0
+}
+],
+"AYLAN DYNAMIC ❌": [
+{
+"date": "2025-07-22",
+"pack": "massage",
+"homme": 0,
+"femme": 1,
+"debit": 50,
+"credit": 0
+}
+],
+"YASMINE VILLA RANCH BLADNA": [
+{
+"date": "2025-06-14",
+"pack": "taziri",
+"homme": 0,
+"femme": 2,
+"debit": 100,
+"credit": 0
+}
+],
+"BANAN QUAD": [
+{
+"date": "2025-04-29",
+"pack": "massage",
+"homme": 0,
+"femme": 1,
+"debit": 50,
+"credit": 0
+},
+{
+"date": "2025-04-30",
+"pack": "massage",
+"homme": 1,
+"femme": 0,
+"debit": 50,
+"credit": 0
+},
+{
+"date": "2026-04-27",
+"pack": "taziri",
+"homme": 1,
+"femme": 1,
+"debit": 100,
+"credit": 0
+},
+{
+"date": "2026-05-01",
+"pack": "traditio",
+"homme": 0,
+"femme": 2,
+"debit": 100,
+"credit": 0
+}
+],
+"AMINE ZEN STAY ❌": [
+{
+"date": "2025-04-13",
+"pack": "taziri",
+"homme": 2,
+"femme": 0,
+"debit": 100,
+"credit": 0
+}
+],
+"MARIE MALIBU❌": [
+{
+"date": "2025-02-22",
+"pack": "",
+"homme": 0,
+"femme": 2,
+"debit": 100,
+"credit": 0
+},
+{
+"date": "2025-03-07",
+"pack": "massage",
+"homme": 0,
+"femme": 2,
+"debit": 100,
+"credit": 0
+},
+{
+"date": "2025-03-20",
+"pack": "massage",
+"homme": 1,
+"femme": 1,
+"debit": 100,
+"credit": 0
+},
+{
+"date": "2025-04-03",
+"pack": "traditional",
+"homme": 0,
+"femme": 1,
+"debit": 0,
+"credit": 250
+},
+{
+"date": "2025-04-03",
+"pack": "royal",
+"homme": 0,
+"femme": 1,
+"debit": 50,
+"credit": 0
+}
+],
+"LUNA SURF": [
+{
+"date": "2025-01-27",
+"pack": "taziri",
+"homme": 1,
+"femme": 0,
+"debit": 50,
+"credit": 0
+}
+],
+"SUNRISE VILLA": [
+{
+"date": "2025-01-06",
+"pack": "massage",
+"homme": 0,
+"femme": 1,
+"debit": 50,
+"credit": 0
+}
+],
+"BOUBAKER": [
+{
+"date": "2025-01-04",
+"pack": "",
+"homme": 1,
+"femme": 1,
+"debit": 100,
+"credit": 0
+}
+],
+"GO SURF ❌": [
+{
+"date": "2024-12-26",
+"pack": "massage",
+"homme": 1,
+"femme": 2,
+"debit": 150,
+"credit": 0
+}
+],
+"HELANA": [
+{
+"date": "2024-12-11",
+"pack": "massage",
+"homme": 0,
+"femme": 2,
+"debit": 100,
+"credit": 0
+},
+{
+"date": "2025-03-27",
+"pack": "massage",
+"homme": 0,
+"femme": 1,
+"debit": 50,
+"credit": 0
+}
+],
+"SAID ❌": [
+{
+"date": "2024-11-15",
+"pack": "taziri",
+"homme": 0,
+"femme": 2,
+"debit": 100,
+"credit": 0
+},
+{
+"date": "2024-12-18",
+"pack": "taziri",
+"homme": 0,
+"femme": 2,
+"debit": 100,
+"credit": 0
+}
+],
+"HABIB SURF ONE": [
+{
+"date": "2024-10-03",
+"pack": "massage",
+"homme": 0,
+"femme": 1,
+"debit": 50,
+"credit": 0
+}
+],
+"HASHPOINT❌": [
+{
+"date": "2024-06-27",
+"pack": "massage",
+"homme": 1,
+"femme": 2,
+"debit": 150,
+"credit": 0
+}
+],
+"ZAKARIA ❌": [
+{
+"date": "2024-06-10",
+"pack": "massage",
+"homme": 0,
+"femme": 1,
+"debit": 50,
+"credit": 0
+}
+],
+"MOHAMED BOUMLIK": [
+{
+"date": "2024-05-04",
+"pack": "massage",
+"homme": 0,
+"femme": 2,
+"debit": 100,
+"credit": 0
+}
+],
+"OMAR FAIRMONT❌": [
+{
+"date": "2024-04-26",
+"pack": "massage",
+"homme": 1,
+"femme": 0,
+"debit": 50,
+"credit": 0
+}
+],
+"ACHRAF ❌": [
+{
+"date": "2024-03-05",
+"pack": "massage",
+"homme": 1,
+"femme": 1,
+"debit": 100,
+"credit": 0
+}
+],
+"SUNNY SURF": [
+{
+"date": "2024-02-17",
+"pack": "massage",
+"homme": 1,
+"femme": 0,
+"debit": 50,
+"credit": 0
+}
+],
+"RABIAA": [
+{
+"date": "2023-11-23",
+"pack": "traditional",
+"homme": 0,
+"femme": 1,
+"debit": 50,
+"credit": 0
+}
+],
+"SUNO VILLA ❌": [
+{
+"date": "2023-08-15",
+"pack": "MASSAGE",
+"homme": 0,
+"femme": 1,
+"debit": 50,
+"credit": 0
+}
+],
+"ATLAS WONDER": [
+{
+"date": "2022-07-02",
+"pack": "TAZIRI",
+"homme": 1,
+"femme": 1,
+"debit": 100,
+"credit": 0
+},
+{
+"date": "2022-07-15",
+"pack": "taziri",
+"homme": 1,
+"femme": 1,
+"debit": 100,
+"credit": 0
+},
+{
+"date": "2022-08-26",
+"pack": "TAZIRI",
+"homme": 1,
+"femme": 0,
+"debit": 50,
+"credit": 0
+},
+{
+"date": "2022-11-28",
+"pack": "MASSAGE",
+"homme": 0,
+"femme": 2,
+"debit": 100,
+"credit": 0
+}
+]
+}
