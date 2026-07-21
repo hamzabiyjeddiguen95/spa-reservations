@@ -624,10 +624,15 @@ async function loadCashDay(date) {
   $('cashDayBody').innerHTML = '<p style="color:#6b7280;font-size:13px;">Chargement...</p>';
   try {
     const res = await authFetch(`${API}/api/cash-day?date=${date}`);
-    cashDayData = await res.json();
+    const data = await res.json();
+    if (!res.ok) {
+      $('cashDayBody').innerHTML = '<p style="color:#dc2626;font-size:13px;">Erreur : ' + (data.error || 'inconnue') + '</p>';
+      return;
+    }
+    cashDayData = data;
     renderCashDay();
   } catch (e) {
-    $('cashDayBody').innerHTML = '<p style="color:#dc2626;font-size:13px;">Erreur de chargement.</p>';
+    $('cashDayBody').innerHTML = '<p style="color:#dc2626;font-size:13px;">Erreur de chargement : ' + e.message + '</p>';
   }
 }
 

@@ -372,7 +372,7 @@ app.get('/api/cash-day', auth, async (req, res) => {
     res.json({ ...day, cumulativeTotal });
   } catch (e) {
     console.error(e);
-    res.status(500).json({ error: 'Erreur serveur' });
+    res.status(500).json({ error: 'Erreur serveur: ' + e.message });
   }
 });
 
