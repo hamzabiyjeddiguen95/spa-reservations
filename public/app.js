@@ -50,6 +50,24 @@ function init() {
   $('profileCloseBtn').addEventListener('click', closeProfileModal);
   $('profileCancelBtn').addEventListener('click', closeProfileModal);
   $('profileSaveBtn').addEventListener('click', saveProfile);
+  $('sidebarToggleBtn').addEventListener('click', toggleSidebar);
+  $('sidebarOverlay').addEventListener('click', closeSidebar);
+  document.querySelectorAll('.sidebar-item').forEach((btn) => {
+    btn.addEventListener('click', () => switchView(btn.dataset.view));
+  });
+  $('cashDayDate').addEventListener('change', () => loadCashDay($('cashDayDate').value));
+  $('cashDayPrevBtn').addEventListener('click', () => {
+    const d = new Date($('cashDayDate').value + 'T00:00:00');
+    d.setDate(d.getDate() - 1);
+    $('cashDayDate').value = fmtDate(d);
+    loadCashDay(fmtDate(d));
+  });
+  $('cashDayNextBtn').addEventListener('click', () => {
+    const d = new Date($('cashDayDate').value + 'T00:00:00');
+    d.setDate(d.getDate() + 1);
+    $('cashDayDate').value = fmtDate(d);
+    loadCashDay(fmtDate(d));
+  });
   $('cancelResBtn').addEventListener('click', closeModal);
   $('saveResBtn').addEventListener('click', saveReservation);
   $('deleteResBtn').addEventListener('click', deleteReservation);
@@ -575,6 +593,132 @@ async function saveProfile() {
   }
 }
 
+// ---------- Sidebar / navigation ----------
+function toggleSidebar() {
+  $('sidebar').classList.toggle('open');
+  $('sidebarOverlay').classList.toggle('show');
+}
+
+function closeSidebar() {
+  $('sidebar').classList.remove('open');
+  $('sidebarOverlay').classList.remove('show');
+}
+
+function switchView(view) {
+  document.querySelectorAll('.sidebar-item').forEach((el) => {
+    el.classList.toggle('active', el.dataset.view === view);
+  });
+  $('viewReservations').style.display = view === 'reservations' ? 'block' : 'none';
+  $('viewCaisse').style.display = view === 'caisse' ? 'block' : 'none';
+  closeSidebar();
+  if (view === 'caisse') {
+    $('cashDayDate').value = currentDate;
+    loadCashDay(currentDate);
+  }
+}
+
+// ---------- Calcul de caisse ----------
+let cashDayData = null;
+
+async function loadCashDay(date) {
+  $('cashDayBody').innerHTML = '<p style="color:#6b7280;font-size:13px;">Chargement...</p>';
+  try {
+    const res = await authFetch(`${API}/api/cash-day?date=${date}`);
+    cashDayData = await res.json();
+    renderCashDay();
+  } catch (e) {
+    $('cashDayBody').innerHTML = '<p style="color:#dc2626;font-size:13px;">Erreur de chargement.</p>';
+  }
+}
+
+function fmtMoney(n) {
+  return (Math.round(n * 100) / 100).toLocaleString('fr-FR') + ' dh';
+}
+
+function renderCashDay() {
+  const d = cashDayData;
+  const wrap = $('cashDayBody');
+
+  const extraRows = d.extraList.length
+    ? d.extraList.map((e) => `<div style="display:flex;justify-content:space-between;font-size:13.5px;padding:3px 0;"><span>${escapeHtml(e.name)}</span><span>${fmtMoney(e.amount)}</span></div>`).join('')
+    : '<p style="font-size:13px;color:#9ca3af;">Aucun extra ce jour.</p>';
+
+  const commRows = d.commissionList.length
+    ? d.commissionList.map((c) => `<div style="display:flex;justify-content:space-between;font-size:13.5px;padding:3px 0;"><span>${escapeHtml(c.auberge)}</span><span>${fmtMoney(c.amount)}</span></div>`).join('')
+    : '<p style="font-size:13px;color:#9ca3af;">Aucune commission ce jour.</p>';
+
+  const chargeRows = d.charges.length
+    ? d.charges.map((c) => `<div style="display:flex;justify-content:space-between;align-items:center;font-size:13.5px;padding:3px 0;"><span>${escapeHtml(c.label)}</span><span style="display:flex;align-items:center;gap:8px;">${fmtMoney(parseFloat(c.amount))} <button data-charge-del="${c.id}" style="color:#dc2626;background:none;border:none;font-size:14px;padding:0;">✕</button></span></div>`).join('')
+    : '<p style="font-size:13px;color:#9ca3af;">Aucune charge ajoutee.</p>';
+
+  wrap.innerHTML = `
+    <div style="background:#f9f6f0;border-radius:10px;padding:12px;margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;font-weight:700;font-size:15px;"><span>Caisse</span><span>${fmtMoney(d.caisse)}</span></div>
+    </div>
+
+    <div style="margin-bottom:14px;">
+      <p style="font-weight:700;font-size:13.5px;color:#5a3823;margin-bottom:4px;">Extra - total ${fmtMoney(d.extraTotal)}</p>
+      ${extraRows}
+    </div>
+
+    <div style="margin-bottom:14px;">
+      <label style="display:flex;align-items:center;gap:8px;font-size:13.5px;">
+        <input type="checkbox" id="fHananOff" style="width:auto;margin:0;" ${d.hananOff ? 'checked' : ''}>
+        Hanan en repos aujourd'hui (ne touche rien)
+      </label>
+      <div style="display:flex;justify-content:space-between;font-weight:700;font-size:14px;margin-top:6px;"><span>Hanan</span><span>${fmtMoney(d.hanan)}</span></div>
+    </div>
+
+    <div style="margin-bottom:14px;">
+      <p style="font-weight:700;font-size:13.5px;color:#5a3823;margin-bottom:4px;">Commission auberges - total ${fmtMoney(d.commissionTotal)}</p>
+      ${commRows}
+    </div>
+
+    <div style="margin-bottom:14px;">
+      <p style="font-weight:700;font-size:13.5px;color:#5a3823;margin-bottom:4px;">Charges - total ${fmtMoney(d.chargesTotal)}</p>
+      ${chargeRows}
+      <div style="display:flex;gap:6px;margin-top:8px;">
+        <input id="fChargeLabel" type="text" placeholder="Label" style="flex:2;padding:8px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;">
+        <input id="fChargeAmount" type="number" placeholder="Montant" style="flex:1;padding:8px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;">
+        <button id="addChargeBtn" class="btn-secondary" style="padding:8px 12px;margin:0;">+</button>
+      </div>
+    </div>
+
+    <hr style="border:none;border-top:1px solid #e5e7eb;margin:14px 0;">
+
+    <div style="display:flex;justify-content:space-between;font-weight:700;font-size:16px;margin-bottom:6px;"><span>Reste du jour</span><span>${fmtMoney(d.reste)}</span></div>
+    <div style="display:flex;justify-content:space-between;font-weight:800;font-size:17px;color:#5a3823;"><span>Total general</span><span>${fmtMoney(d.cumulativeTotal)}</span></div>
+  `;
+
+  $('fHananOff').addEventListener('change', async () => {
+    await authFetch(`${API}/api/cash-day/hanan-off`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date: d.date, hanan_off: $('fHananOff').checked }),
+    });
+    loadCashDay(d.date);
+  });
+
+  $('addChargeBtn').addEventListener('click', async () => {
+    const label = $('fChargeLabel').value.trim();
+    const amount = parseFloat($('fChargeAmount').value);
+    if (!label || isNaN(amount)) return;
+    await authFetch(`${API}/api/cash-day/charges`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date: d.date, label, amount }),
+    });
+    loadCashDay(d.date);
+  });
+
+  wrap.querySelectorAll('[data-charge-del]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      await authFetch(`${API}/api/cash-day/charges/${btn.dataset.chargeDel}`, { method: 'DELETE' });
+      loadCashDay(d.date);
+    });
+  });
+}
+
 function showLogin() {
   $('loginScreen').classList.remove('hidden');
   $('mainScreen').classList.add('hidden');
@@ -784,7 +928,8 @@ function renderGrid() {
       const dejaPris = list.reduce((sum, r2) => sum + (r2.nb_personnes || 0), 0);
       const estPlein = dejaPris >= r.capacity_base;
       const aUneAlerte = list.some((r2) => r2.alerte);
-      cell.className = 'res-cell' + (list.length ? ' filled' : '') + (estPlein ? ' full' : '') + (aUneAlerte ? ' alerte' : '');
+      const aUneReclamation = list.some((r2) => r2.reclamation);
+      cell.className = 'res-cell' + (list.length ? ' filled' : '') + (estPlein ? ' full' : '') + (aUneAlerte ? ' alerte' : '') + (aUneReclamation ? ' reclamation' : '');
       if (list.length) {
         cell.innerHTML = list.map((res, idx) => {
           const svc = services.find((s) => s.id === res.service_id);
@@ -806,6 +951,7 @@ function renderGrid() {
             ${res.staff_names ? `<div class="res-staff">${escapeHtml(res.staff_names)}</div>` : ''}
             ${res.taxi ? '<div>🚕 taxi</div>' : ''}
             ${res.note ? `<div style="font-weight:700;color:#dc2626;">${escapeHtml(res.note)}</div>` : ''}
+            ${res.reclamation ? '<div style="font-weight:800;color:#dc2626;">⚠ RECLAMATION</div>' : ''}
           </div>`;
         }).join('');
       }
@@ -936,6 +1082,7 @@ function showForm(existing) {
   $('fStaff').value = existing ? existing.staff_names || '' : '';
   $('fNote').value = existing ? existing.note || '' : '';
   $('fAlerte').checked = existing ? !!existing.alerte : false;
+  $('fReclamation').checked = existing ? !!existing.reclamation : false;
   $('deleteResBtn').classList.toggle('hidden', !existing);
   updateChipHighlight();
   updateLivePreview();
@@ -1001,6 +1148,7 @@ async function saveReservation() {
     remise: $('fRemise').value ? parseFloat($('fRemise').value) : 0,
     note: $('fNote').value.trim(),
     alerte: $('fAlerte').checked,
+    reclamation: $('fReclamation').checked,
     staff_names: $('fStaff').value.trim(),
   };
 

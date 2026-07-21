@@ -161,7 +161,7 @@ app.get('/api/reservations', auth, async (req, res) => {
 app.post('/api/reservations', auth, async (req, res) => {
   const {
     room_id, service_id, date, hour, duration, client_type,
-    nb_personnes, sexe, origine, auberge, sans_commission, remise, alerte, taxi, prix, note, staff_names, carte_cadeaux,
+    nb_personnes, sexe, origine, auberge, sans_commission, remise, alerte, taxi, prix, note, staff_names, carte_cadeaux, reclamation,
   } = req.body;
   if (!room_id || !date || hour === undefined) {
     return res.status(400).json({ error: 'room_id, date et hour sont obligatoires' });
@@ -197,10 +197,10 @@ app.post('/api/reservations', auth, async (req, res) => {
 
     const { rows } = await pool.query(
       `INSERT INTO reservations
-        (room_id, service_id, date, hour, duration, client_type, nb_personnes, sexe, origine, auberge, sans_commission, remise, alerte, taxi, prix, note, staff_names, carte_cadeaux, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+        (room_id, service_id, date, hour, duration, client_type, nb_personnes, sexe, origine, auberge, sans_commission, remise, alerte, taxi, prix, note, staff_names, carte_cadeaux, reclamation, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
        RETURNING *`,
-      [room_id, service_id || null, date, hour, duration || 1, client_type, nb, sexe, origine, auberge || null, !!sans_commission, remise || 0, !!alerte, !!taxi, prix, note, staff_names, !!carte_cadeaux, req.user.id]
+      [room_id, service_id || null, date, hour, duration || 1, client_type, nb, sexe, origine, auberge || null, !!sans_commission, remise || 0, !!alerte, !!taxi, prix, note, staff_names, !!carte_cadeaux, !!reclamation, req.user.id]
     );
     res.json(rows[0]);
   } catch (e) {
@@ -212,7 +212,7 @@ app.post('/api/reservations', auth, async (req, res) => {
 app.put('/api/reservations/:id', auth, async (req, res) => {
   const { id } = req.params;
   const {
-    client_type, service_id, nb_personnes, sexe, origine, auberge, sans_commission, remise, alerte, taxi, prix, note, staff_names, duration, carte_cadeaux,
+    client_type, service_id, nb_personnes, sexe, origine, auberge, sans_commission, remise, alerte, taxi, prix, note, staff_names, duration, carte_cadeaux, reclamation,
     room_id, hour, date,
   } = req.body;
   try {
@@ -269,11 +269,12 @@ app.put('/api/reservations/:id', auth, async (req, res) => {
         remise=COALESCE($13, remise),
         alerte=COALESCE($14, alerte),
         carte_cadeaux=COALESCE($15, carte_cadeaux),
-        room_id=$16, hour=$17, date=$18,
+        reclamation=COALESCE($16, reclamation),
+        room_id=$17, hour=$18, date=$19,
         updated_at=NOW()
-       WHERE id=$19 RETURNING *`,
+       WHERE id=$20 RETURNING *`,
       [client_type, service_id, nb_personnes, sexe, origine, auberge, taxi, prix, note, staff_names, duration,
-        sans_commission, remise, alerte, carte_cadeaux, targetRoomId, targetHour, targetDate, id]
+        sans_commission, remise, alerte, carte_cadeaux, reclamation, targetRoomId, targetHour, targetDate, id]
     );
     if (!rows[0]) return res.status(404).json({ error: 'Reservation introuvable' });
     res.json(rows[0]);
@@ -292,6 +293,130 @@ app.delete('/api/reservations/:id', auth, async (req, res) => {
 // ---------- Fallback: sert index.html pour toute route inconnue ----------
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// ---------- Comptabilite : calcul de caisse ----------
+function splitStaffNames(str) {
+  if (!str) return [];
+  return str.split(/[+,\/]/).map((n) => n.trim()).filter(Boolean);
+}
+
+async function computeDayCash(dateStr) {
+  const { rows } = await pool.query('SELECT * FROM reservations WHERE date=$1', [dateStr]);
+  const active = rows.filter((r) => !r.reclamation);
+
+  const caisse = active.reduce((s, r) => s + (parseFloat(r.prix) || 0), 0);
+
+  const extraMap = {};
+  active.forEach((r) => {
+    const names = splitStaffNames(r.staff_names);
+    if (!names.length) return;
+    const hours = parseFloat(r.duration) || 1;
+    names.forEach((name) => {
+      extraMap[name] = (extraMap[name] || 0) + hours * 100;
+    });
+  });
+  const extraList = Object.entries(extraMap).map(([name, amount]) => ({ name, amount }));
+  const extraTotal = extraList.reduce((s, e) => s + e.amount, 0);
+
+  const commMap = {};
+  active.forEach((r) => {
+    if (!r.auberge || r.sans_commission) return;
+    const nb = r.nb_personnes || 1;
+    const amt = nb * (nb >= 5 ? 100 : 50);
+    commMap[r.auberge] = (commMap[r.auberge] || 0) + amt;
+  });
+  const commissionList = Object.entries(commMap).map(([auberge, amount]) => ({ auberge, amount }));
+  const commissionTotal = commissionList.reduce((s, c) => s + c.amount, 0);
+
+  const { rows: settingsRows } = await pool.query('SELECT * FROM day_settings WHERE date=$1', [dateStr]);
+  const dayOfWeek = new Date(dateStr + 'T00:00:00').getDay(); // 0=dim ... 4=jeu
+  const defaultOff = dayOfWeek === 4;
+  const hananOff = settingsRows[0] ? settingsRows[0].hanan_off : defaultOff;
+  const maxExtra = extraList.length ? Math.max(...extraList.map((e) => e.amount)) : 0;
+  const hanan = hananOff ? 0 : (maxExtra > 0 ? maxExtra + 100 : 0);
+
+  const { rows: chargeRows } = await pool.query('SELECT * FROM daily_charges WHERE date=$1 ORDER BY id', [dateStr]);
+  const chargesTotal = chargeRows.reduce((s, c) => s + parseFloat(c.amount), 0);
+
+  const reste = caisse - extraTotal - hanan - chargesTotal - commissionTotal;
+
+  return {
+    date: dateStr, caisse, extraTotal, extraList, hanan, hananOff,
+    commissionTotal, commissionList, charges: chargeRows, chargesTotal, reste,
+  };
+}
+
+app.get('/api/cash-day', auth, async (req, res) => {
+  const { date } = req.query;
+  if (!date) return res.status(400).json({ error: 'date requise (YYYY-MM-DD)' });
+  try {
+    const day = await computeDayCash(date);
+
+    const { rows: dateRows } = await pool.query(
+      `SELECT date::text FROM reservations WHERE date <= $1
+       UNION SELECT date::text FROM daily_charges WHERE date <= $1
+       ORDER BY date ASC`,
+      [date]
+    );
+    const allDates = [...new Set(dateRows.map((r) => r.date))];
+    if (!allDates.includes(date)) allDates.push(date);
+    allDates.sort();
+
+    let cumulativeTotal = 0;
+    for (const d of allDates) {
+      const dd = d === date ? day : await computeDayCash(d);
+      cumulativeTotal += dd.reste;
+    }
+
+    res.json({ ...day, cumulativeTotal });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+app.post('/api/cash-day/charges', auth, async (req, res) => {
+  const { date, label, amount } = req.body;
+  if (!date || !label || amount === undefined) {
+    return res.status(400).json({ error: 'date, label et amount sont obligatoires' });
+  }
+  try {
+    const { rows } = await pool.query(
+      'INSERT INTO daily_charges (date, label, amount) VALUES ($1,$2,$3) RETURNING *',
+      [date, label, amount]
+    );
+    res.json(rows[0]);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+app.delete('/api/cash-day/charges/:id', auth, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM daily_charges WHERE id=$1', [req.params.id]);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+app.put('/api/cash-day/hanan-off', auth, async (req, res) => {
+  const { date, hanan_off } = req.body;
+  if (!date) return res.status(400).json({ error: 'date requise' });
+  try {
+    await pool.query(
+      `INSERT INTO day_settings (date, hanan_off) VALUES ($1,$2)
+       ON CONFLICT (date) DO UPDATE SET hanan_off=$2`,
+      [date, !!hanan_off]
+    );
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
 });
 
 app.listen(PORT, () => {

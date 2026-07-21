@@ -72,3 +72,19 @@ ALTER TABLE reservations ADD COLUMN IF NOT EXISTS taxi BOOLEAN DEFAULT FALSE;
 ALTER TABLE reservations ADD COLUMN IF NOT EXISTS note TEXT;
 ALTER TABLE reservations ADD COLUMN IF NOT EXISTS staff_names TEXT;
 ALTER TABLE reservations ADD COLUMN IF NOT EXISTS carte_cadeaux BOOLEAN DEFAULT FALSE;
+ALTER TABLE reservations ADD COLUMN IF NOT EXISTS reclamation BOOLEAN DEFAULT FALSE;
+
+-- ---------- Comptabilite (calcul de caisse) ----------
+CREATE TABLE IF NOT EXISTS daily_charges (
+  id SERIAL PRIMARY KEY,
+  date DATE NOT NULL,
+  label TEXT NOT NULL,
+  amount NUMERIC(10,2) NOT NULL DEFAULT 0,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_daily_charges_date ON daily_charges(date);
+
+CREATE TABLE IF NOT EXISTS day_settings (
+  date DATE PRIMARY KEY,
+  hanan_off BOOLEAN DEFAULT FALSE
+);

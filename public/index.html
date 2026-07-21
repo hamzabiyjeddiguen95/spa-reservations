@@ -23,11 +23,28 @@
 <!-- ============ ECRAN PRINCIPAL ============ -->
 <div id="mainScreen" class="screen hidden">
   <header class="topbar">
-    <img src="/assets/logo-icon.png" alt="" class="topbar-logo">
+    <button id="sidebarToggleBtn" class="hamburger-btn">☰</button>
+    <img src="/assets/logo-star.png" alt="" class="topbar-logo">
     <span id="userLabel" class="user-label"></span>
-    <button id="profileBtn" class="logout-btn" style="background:rgba(255,255,255,0.1);">Mon profil</button>
-    <button id="logoutBtn" class="logout-btn">Deconnexion</button>
+    <div style="margin-left:auto;display:flex;gap:8px;">
+      <button id="profileBtn" class="logout-btn" style="background:rgba(255,255,255,0.1);">Mon profil</button>
+      <button id="logoutBtn" class="logout-btn">Deconnexion</button>
+    </div>
   </header>
+
+  <div id="sidebarOverlay" class="sidebar-overlay"></div>
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-header">
+      <img src="/assets/logo-star.png" alt="" style="height:28px;">
+      <span>Tamraght Spa House</span>
+    </div>
+    <nav class="sidebar-nav">
+      <button class="sidebar-item active" data-view="reservations">📅 Reservations</button>
+      <button class="sidebar-item" data-view="caisse">💰 Caisse</button>
+    </nav>
+  </aside>
+
+  <div id="viewReservations">
 
   <div class="datebar">
     <button class="nav-btn2" id="prevDayBtn">‹</button>
@@ -72,6 +89,17 @@
     <button id="removeHourBtn" class="nav-btn" title="Retirer une heure">-1h</button>
     <span id="hoursRangeLabel" style="font-size:13px;color:#6b7280;"></span>
     <button id="addHourBtn" class="nav-btn" title="Ajouter une heure">+1h</button>
+  </div>
+  </div>
+
+  <div id="viewCaisse" style="display:none;padding:16px;">
+    <h2 style="margin-bottom:14px;color:#5a3823;">💰 Calcul de caisse</h2>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;max-width:400px;">
+      <button id="cashDayPrevBtn" class="nav-btn2">‹</button>
+      <input id="cashDayDate" type="date" style="flex:1;padding:8px;border:1px solid #d1d5db;border-radius:8px;">
+      <button id="cashDayNextBtn" class="nav-btn2">›</button>
+    </div>
+    <div id="cashDayBody" style="max-width:520px;"></div>
   </div>
 </div>
 
@@ -193,6 +221,9 @@
     <textarea id="fNote" placeholder="Note (visible dans le tableau)"></textarea>
     <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:14px;">
       <input id="fAlerte" type="checkbox" style="width:auto;margin:0;"> ⚠️ Marquer en jaune (attention equipe)
+    </label>
+    <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:14px;color:#dc2626;">
+      <input id="fReclamation" type="checkbox" style="width:auto;margin:0;"> Reclamation (client rembourse, extra non paye)
     </label>
     <div class="modal-actions">
       <button id="saveResBtn" class="btn-primary">Enregistrer</button>
