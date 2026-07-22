@@ -36,6 +36,13 @@ function auth(req, res, next) {
   }
 }
 
+function requireAdmin(req, res, next) {
+  if (!req.user || !req.user.is_admin) {
+    return res.status(403).json({ error: 'Reserve au patron (compte administrateur)' });
+  }
+  next();
+}
+
 // ---------- Routes: Auth ----------
 app.post('/api/login', async (req, res) => {
   const { username, password } = req.body;
@@ -714,6 +721,34 @@ app.get('/api/commission-global', auth, async (req, res) => {
     res.status(500).json({ error: 'Erreur serveur: ' + e.message });
   }
 });
+
+// ---------- Zone Admin (patron uniquement) : effacer des donnees ----------
+app.post('/api/admin/reset-data', auth, requireAdmin, async (req, res) => {
+  const { caisse, reservations, commissions } = req.body;
+  const cleared = [];
+  try {
+    if (reservations) {
+      await pool.query('DELETE FROM reservations');
+      cleared.push('reservations');
+    }
+    if (caisse) {
+      await pool.query('DELETE FROM daily_charges');
+      await pool.query('DELETE FROM day_settings');
+      cleared.push('caisse');
+    }
+    if (commissions) {
+      await pool.query('DELETE FROM commission_entries');
+      await pool.query('DELETE FROM commission_credits');
+      await pool.query('UPDATE auberges SET opening_balance=0');
+      cleared.push('commissions');
+    }
+    res.json({ ok: true, cleared });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Erreur serveur: ' + e.message });
+  }
+});
+
 
 // ---------- Fallback: sert index.html pour toute route inconnue (doit etre APRES toutes les routes API) ----------
 app.get('*', (req, res) => {

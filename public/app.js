@@ -62,6 +62,7 @@ function init() {
   document.querySelectorAll('.comm-tab').forEach((btn) => {
     btn.addEventListener('click', () => switchCommTab(btn.dataset.ctab));
   });
+  $('adminResetBtn').addEventListener('click', handleAdminReset);
   $('cashDayDate').addEventListener('change', () => loadCashDay($('cashDayDate').value));
   $('cashDayPrevBtn').addEventListener('click', () => {
     const d = new Date($('cashDayDate').value + 'T00:00:00');
@@ -619,6 +620,7 @@ function switchView(view) {
   $('viewCaisse').style.display = view === 'caisse' ? 'block' : 'none';
   $('viewAuberges').style.display = view === 'auberges' ? 'block' : 'none';
   $('viewCommission').style.display = view === 'commission' ? 'block' : 'none';
+  $('viewAdmin').style.display = view === 'admin' ? 'block' : 'none';
   closeSidebar();
   if (view === 'caisse') {
     $('cashDayDate').value = currentDate;
@@ -790,6 +792,7 @@ function showMain() {
   $('loginScreen').classList.add('hidden');
   $('mainScreen').classList.remove('hidden');
   $('userLabel').textContent = currentUser.full_name;
+  $('navAdmin').classList.toggle('hidden', !currentUser.is_admin);
   renderCalendar();
   loadRoomsAndReservations();
   loadAuberges();
@@ -1769,6 +1772,60 @@ function openSoldePayout(row) {
   };
   box.querySelector('.payCash').addEventListener('click', () => doPayout('A pris son argent'));
   box.querySelector('.paySoins').addEventListener('click', () => doPayout('Payé pour ses clients'));
+}
+
+// ---------- Zone Admin : effacer des donnees ----------
+async function handleAdminReset() {
+  const caisse = $('chkCaisse').checked;
+  const reservations = $('chkReservations').checked;
+  const commissions = $('chkCommissions').checked;
+  const msg = $('adminResetMsg');
+
+  if (!caisse && !reservations && !commissions) {
+    msg.style.color = '#b91c1c';
+    msg.textContent = 'Coche au moins une case.';
+    return;
+  }
+  if ($('fAdminConfirm').value.trim().toUpperCase() !== 'EFFACER') {
+    msg.style.color = '#b91c1c';
+    msg.textContent = 'Ecris EFFACER pour confirmer.';
+    return;
+  }
+
+  const labels = [];
+  if (caisse) labels.push('la caisse');
+  if (reservations) labels.push('les reservations');
+  if (commissions) labels.push('les commissions et soldes');
+  if (!confirm(`Es-tu sur ? Ceci va effacer definitivement : ${labels.join(', ')}. Cette action est irreversible.`)) return;
+
+  const btn = $('adminResetBtn');
+  btn.disabled = true;
+  btn.textContent = 'Effacement...';
+  try {
+    const res = await authFetch(`${API}/api/admin/reset-data`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ caisse, reservations, commissions }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      msg.style.color = '#b91c1c';
+      msg.textContent = data.error || 'Erreur lors de l\'effacement.';
+    } else {
+      msg.style.color = '#166534';
+      msg.textContent = 'Donnees effacees avec succes.';
+      $('chkCaisse').checked = false;
+      $('chkReservations').checked = false;
+      $('chkCommissions').checked = false;
+      $('fAdminConfirm').value = '';
+    }
+  } catch (e) {
+    msg.style.color = '#b91c1c';
+    msg.textContent = 'Erreur de connexion.';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Effacer definitivement';
+  }
 }
 
 init();
