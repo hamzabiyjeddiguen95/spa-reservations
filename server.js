@@ -354,7 +354,14 @@ function splitStaffNames(str) {
 }
 
 async function computeDayCash(dateStr) {
-  const { rows } = await pool.query('SELECT * FROM reservations WHERE date=$1', [dateStr]);
+  const { rows } = await pool.query(
+    `SELECT r.*, s.name AS service_name, rm.name AS room_name
+     FROM reservations r
+     LEFT JOIN services s ON s.id = r.service_id
+     LEFT JOIN rooms rm ON rm.id = r.room_id
+     WHERE r.date=$1 ORDER BY r.hour ASC`,
+    [dateStr]
+  );
   const active = rows.filter((r) => !r.reclamation);
 
   const caisse = active.reduce((s, r) => s + (parseFloat(r.prix) || 0), 0);
@@ -395,11 +402,18 @@ async function computeDayCash(dateStr) {
   const { rows: chargeRows } = await pool.query('SELECT * FROM daily_charges WHERE date=$1 ORDER BY id', [dateStr]);
   const chargesTotal = chargeRows.reduce((s, c) => s + parseFloat(c.amount), 0);
 
+  const reservationsList = active.map((r) => ({
+    id: r.id, hour: r.hour, room: r.room_name, service: r.service_name,
+    client: r.client_type, staff: r.staff_names, prix: r.prix,
+    auberge: r.auberge, sansCommission: r.sans_commission,
+  }));
+
   const reste = caisse - extraTotal - hanan - chargesTotal - commissionTotal;
 
   return {
     date: dateStr, caisse, extraTotal, extraList, hanan, hananOff,
-    commissionTotal, commissionList, charges: chargeRows, chargesTotal, reste,
+    commissionTotal, commissionList, charges: chargeRows, chargesTotal,
+    reservationsList, reste,
   };
 }
 
@@ -519,7 +533,122 @@ app.put('/api/auberges/:id', auth, async (req, res) => {
   }
 });
 
-// ---------- Commission : lignes entierement modifiables a la main (comme l'Excel) ----------
+// ---------- Extras (staff) : liste geree a la main par le patron ----------
+app.get('/api/extras', auth, async (req, res) => {
+  const { rows } = await pool.query('SELECT * FROM extras ORDER BY name ASC');
+  res.json(rows);
+});
+
+app.post('/api/extras', auth, async (req, res) => {
+  const { name } = req.body;
+  if (!name || !name.trim()) return res.status(400).json({ error: 'Nom requis' });
+  try {
+    const { rows } = await pool.query('INSERT INTO extras (name) VALUES ($1) RETURNING *', [name.trim()]);
+    res.json(rows[0]);
+  } catch (e) {
+    if (e.code === '23505') return res.status(409).json({ error: 'Cet extra existe deja.' });
+    console.error(e);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+app.delete('/api/extras/:id', auth, async (req, res) => {
+  await pool.query('DELETE FROM extras WHERE id=$1', [req.params.id]);
+  res.json({ ok: true });
+});
+
+app.put('/api/extras/:id', auth, async (req, res) => {
+  const { name } = req.body;
+  if (!name || !name.trim()) return res.status(400).json({ error: 'Nom requis' });
+  try {
+    const { rows } = await pool.query('UPDATE extras SET name=$1 WHERE id=$2 RETURNING *', [name.trim(), req.params.id]);
+    if (!rows[0]) return res.status(404).json({ error: 'Extra introuvable' });
+    res.json(rows[0]);
+  } catch (e) {
+    if (e.code === '23505') return res.status(409).json({ error: 'Ce nom existe deja.' });
+    console.error(e);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// Statistiques : combien chaque extra a gagne sur une periode (mois ou annee au choix)
+app.get('/api/extras/stats', auth, async (req, res) => {
+  const { start, end } = req.query;
+  if (!start || !end) return res.status(400).json({ error: 'start et end requis (YYYY-MM-DD)' });
+  try {
+    const { rows: extrasList } = await pool.query('SELECT * FROM extras ORDER BY name ASC');
+    const { rows: resRows } = await pool.query(
+      `SELECT date, staff_names, duration FROM reservations
+       WHERE date >= $1 AND date <= $2 AND reclamation=false AND staff_names IS NOT NULL AND staff_names <> ''
+       ORDER BY date ASC`,
+      [start, end]
+    );
+    const totals = {};
+    extrasList.forEach((e) => { totals[e.name.toLowerCase()] = { name: e.name, hours: 0, amount: 0, dates: [] }; });
+    resRows.forEach((r) => {
+      const names = (r.staff_names || '').split(/[,+\/]/).map((n) => n.trim()).filter(Boolean);
+      const hours = parseFloat(r.duration) || 1;
+      const dateStr = r.date instanceof Date ? r.date.toISOString().slice(0, 10) : r.date;
+      names.forEach((name) => {
+        const key = name.toLowerCase();
+        if (!totals[key]) totals[key] = { name, hours: 0, amount: 0, dates: [] }; // nom pas (encore) dans la liste geree
+        totals[key].hours += hours;
+        totals[key].amount += hours * 100;
+        totals[key].dates.push({ date: dateStr, hours, amount: hours * 100 });
+      });
+    });
+    const list = Object.values(totals).sort((a, b) => b.amount - a.amount);
+    const totalAmount = list.reduce((s, x) => s + x.amount, 0);
+    res.json({ start, end, list, totalAmount });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Erreur serveur: ' + e.message });
+  }
+});
+
+// ---------- Ordre personnalise des champs du formulaire de reservation ----------
+const DEFAULT_FORM_ORDER = [
+  'service', 'client', 'chips', 'nbSexe', 'origine', 'auberge',
+  'sansCommission', 'taxi', 'prix', 'gratuit', 'carteCadeaux', 'remise',
+  'extras', 'note', 'alerte', 'reclamation',
+];
+
+app.get('/api/form-order', auth, async (req, res) => {
+  try {
+    const { rows } = await pool.query("SELECT value FROM app_settings WHERE key='reservation_form_order'");
+    const saved = rows[0] ? JSON.parse(rows[0].value) : null;
+    const order = (saved && Array.isArray(saved.order)) ? saved.order : DEFAULT_FORM_ORDER;
+    const hidden = (saved && Array.isArray(saved.hidden)) ? saved.hidden : [];
+    res.json({ order, hidden });
+  } catch (e) {
+    res.json({ order: DEFAULT_FORM_ORDER, hidden: [] });
+  }
+});
+
+app.put('/api/form-order', auth, requireAdmin, async (req, res) => {
+  const { order, hidden } = req.body;
+  const hiddenArr = Array.isArray(hidden) ? hidden : [];
+  if (!Array.isArray(order)) {
+    return res.status(400).json({ error: 'Ordre invalide' });
+  }
+  const combined = [...order, ...hiddenArr].slice().sort();
+  const expected = DEFAULT_FORM_ORDER.slice().sort();
+  if (JSON.stringify(combined) !== JSON.stringify(expected)) {
+    return res.status(400).json({ error: 'Ordre invalide (champs manquants ou en double)' });
+  }
+  try {
+    await pool.query(
+      "INSERT INTO app_settings (key, value) VALUES ('reservation_form_order',$1) ON CONFLICT (key) DO UPDATE SET value=$1",
+      [JSON.stringify({ order, hidden: hiddenArr })]
+    );
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+
 const toISO = (d) => (d instanceof Date ? d.toISOString().slice(0, 10) : d);
 
 function entryOut(e) {
@@ -723,26 +852,55 @@ app.get('/api/commission-global', auth, async (req, res) => {
 });
 
 // ---------- Zone Admin (patron uniquement) : effacer des donnees ----------
+function scopeToRange(scope) {
+  if (!scope || scope.scope === 'all') return null; // pas de filtre de date -> tout supprimer
+  if (scope.scope === 'day') return [scope.date, scope.date];
+  if (scope.scope === 'month') {
+    const [y, m] = scope.month.split('-').map(Number);
+    const start = `${y}-${String(m).padStart(2, '0')}-01`;
+    const lastDay = new Date(y, m, 0).getDate();
+    const end = `${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+    return [start, end];
+  }
+  if (scope.scope === 'year') {
+    const y = scope.year;
+    return [`${y}-01-01`, `${y}-12-31`];
+  }
+  return null;
+}
+
 app.post('/api/admin/reset-data', auth, requireAdmin, async (req, res) => {
-  const { caisse, reservations, commissions } = req.body;
+  const { reservations, caisse, commissions } = req.body;
   const cleared = [];
+  let deletedCount = 0;
   try {
     if (reservations) {
-      await pool.query('DELETE FROM reservations');
+      const range = scopeToRange(reservations);
+      const result = range
+        ? await pool.query('DELETE FROM reservations WHERE date >= $1 AND date <= $2', range)
+        : await pool.query('DELETE FROM reservations');
+      deletedCount += result.rowCount;
       cleared.push('reservations');
     }
     if (caisse) {
-      await pool.query('DELETE FROM daily_charges');
-      await pool.query('DELETE FROM day_settings');
+      const range = scopeToRange(caisse);
+      const chargesResult = range
+        ? await pool.query('DELETE FROM daily_charges WHERE date >= $1 AND date <= $2', range)
+        : await pool.query('DELETE FROM daily_charges');
+      const settingsResult = range
+        ? await pool.query('DELETE FROM day_settings WHERE date >= $1 AND date <= $2', range)
+        : await pool.query('DELETE FROM day_settings');
+      deletedCount += chargesResult.rowCount + settingsResult.rowCount;
       cleared.push('caisse');
     }
     if (commissions) {
-      await pool.query('DELETE FROM commission_entries');
+      const commResult = await pool.query('DELETE FROM commission_entries');
       await pool.query('DELETE FROM commission_credits');
       await pool.query('UPDATE auberges SET opening_balance=0');
+      deletedCount += commResult.rowCount;
       cleared.push('commissions');
     }
-    res.json({ ok: true, cleared });
+    res.json({ ok: true, cleared, deletedCount });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'Erreur serveur: ' + e.message });
@@ -779,6 +937,13 @@ async function ensureTables() {
       CREATE TABLE IF NOT EXISTS app_settings (
         key TEXT PRIMARY KEY,
         value TEXT
+      );
+    `);
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS extras (
+        id SERIAL PRIMARY KEY,
+        name TEXT UNIQUE NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW()
       );
     `);
     console.log('Table commission_entries prete.');

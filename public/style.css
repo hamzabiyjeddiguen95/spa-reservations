@@ -320,3 +320,33 @@ body {
 .cal-popup-yearmonth { background:#f9fafb; border-radius:12px; padding:14px 4px; text-align:center; font-size:13.5px; font-weight:600; color:#374151; cursor:pointer; text-transform:capitalize; }
 .cal-popup-yearmonth.selected { background:linear-gradient(135deg,#4a2c1d,#8a6a3e); color:white; }
 .cal-popup-yearmonth .ym-dot { width:5px; height:5px; border-radius:50%; background:#ef4444; margin:5px auto 0; }
+
+/* ---------- Personnaliser le formulaire (ordre des champs) ---------- */
+.field-order-row { display:flex; align-items:center; gap:10px; padding:10px 12px; background:white; border:1px solid #eee; border-radius:10px; margin-bottom:6px; }
+.field-order-row .fo-label { flex:1; font-size:14px; font-weight:600; color:#374151; }
+.field-order-row .fo-arrows { display:flex; gap:4px; }
+.field-order-row .fo-arrows button { width:32px; height:32px; border:none; border-radius:8px; background:#efe7d9; color:#5a3823; font-size:15px; font-weight:700; cursor:pointer; }
+.field-order-row .fo-arrows button:disabled { opacity:0.3; cursor:default; }
+.field-order-row .fo-arrows button.fo-hide { background:#fee2e2; color:#b91c1c; }
+.field-hidden-row { display:flex; align-items:center; gap:10px; padding:10px 12px; background:#f9fafb; border:1px dashed #d1d5db; border-radius:10px; margin-bottom:6px; }
+.field-hidden-row .fo-label { flex:1; font-size:14px; color:#9ca3af; }
+.field-hidden-row button { padding:7px 12px; border:none; border-radius:8px; background:#e0e7ff; color:#3730a3; font-size:12.5px; font-weight:700; cursor:pointer; }
+
+/* ---------- Glisser-deposer fluide (deplacement d'une reservation) ---------- */
+.drag-ghost {
+  position: fixed;
+  top: 0; left: 0;
+  z-index: 999;
+  pointer-events: none;
+  background: #5a3823;
+  color: #f4e9d8;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.3);
+  white-space: nowrap;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

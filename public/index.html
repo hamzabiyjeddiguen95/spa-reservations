@@ -43,8 +43,10 @@
       <button class="sidebar-item active" data-view="reservations">📅 Reservations</button>
       <button class="sidebar-item" data-view="caisse">💰 Caisse</button>
       <button class="sidebar-item" data-view="auberges">🏨 Auberges</button>
+      <button class="sidebar-item" data-view="extras">👥 Extras</button>
       <button class="sidebar-item" data-view="commission">📋 Commission</button>
       <button id="navAdmin" class="sidebar-item hidden" data-view="admin">⚠️ Zone Admin</button>
+      <button id="navPersonnaliser" class="sidebar-item hidden" data-view="personnaliser">🎛️ Personnaliser formulaire</button>
     </nav>
   </aside>
 
@@ -71,11 +73,6 @@
       </div>
       <div id="calPopupBody"></div>
     </div>
-  </div>
-
-  <div id="moveBanner" class="hidden" style="background:#fff3cd;color:#7a5c00;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;font-size:14px;">
-    <span>Touche la case de destination...</span>
-    <button id="cancelMoveBtn" style="background:white;border:1px solid #d1d5db;border-radius:8px;padding:6px 10px;">Annuler</button>
   </div>
 
   <div id="copyBanner" class="hidden" style="background:#dcfce7;color:#166534;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;font-size:14px;">
@@ -116,6 +113,36 @@
     </div>
   </div>
 
+  <div id="viewExtras" style="display:none;padding:16px;">
+    <h2 style="margin-bottom:14px;color:#5a3823;">👥 Extras</h2>
+    <div style="display:flex;gap:8px;margin-bottom:18px;max-width:480px;">
+      <button class="extras-tab active" data-etab="liste" style="flex:1;padding:12px;border:none;border-radius:12px;cursor:pointer;font-weight:700;font-size:14px;background:#5a3823;color:#fff;">Liste</button>
+      <button class="extras-tab" data-etab="stats" style="flex:1;padding:12px;border:none;border-radius:12px;cursor:pointer;font-weight:700;font-size:14px;background:#e7ddcd;color:#7a6650;">📊 Statistiques</button>
+    </div>
+
+    <div id="extrasPanelListe" style="max-width:420px;">
+      <input id="fExtraSearch" type="text" placeholder="Rechercher un extra..." style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;margin-bottom:12px;">
+      <div style="display:flex;gap:6px;margin-bottom:16px;">
+        <input id="fNewExtra" type="text" placeholder="Nom du nouvel extra" style="flex:1;padding:10px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;">
+        <button id="addExtraBtn" class="btn-secondary" style="margin:0;width:auto;padding:10px 16px;">+ Ajouter</button>
+      </div>
+      <div id="extrasList"></div>
+    </div>
+
+    <div id="extrasPanelStats" style="display:none;max-width:480px;">
+      <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;">
+        <select id="fStatsMode" style="padding:9px;border:1px solid #d1d5db;border-radius:8px;font-size:13.5px;">
+          <option value="month">Par mois</option>
+          <option value="year">Par annee</option>
+        </select>
+        <input id="fStatsMonth" type="month" style="padding:9px;border:1px solid #d1d5db;border-radius:8px;font-size:13.5px;flex:1;">
+        <select id="fStatsYear" class="hidden" style="padding:9px;border:1px solid #d1d5db;border-radius:8px;font-size:13.5px;flex:1;"></select>
+      </div>
+      <input id="fStatsSearch" type="text" placeholder="🔍 Rechercher un extra..." style="width:100%;padding:9px;border:1px solid #d1d5db;border-radius:8px;font-size:13.5px;margin-bottom:14px;">
+      <div id="extrasStatsBody"></div>
+    </div>
+  </div>
+
   <div id="viewCommission" style="display:none;padding:16px;">
     <h2 style="margin-bottom:14px;color:#5a3823;">📋 Commission</h2>
     <div style="display:flex;gap:8px;margin-bottom:18px;max-width:560px;">
@@ -137,22 +164,65 @@
     <p style="font-size:13px;color:#6b7280;margin-bottom:18px;">Reserve au patron. Efface definitivement des donnees de l'application.</p>
     <div style="max-width:480px;background:#fff5f5;border:1px solid #fecaca;border-radius:14px;padding:16px;">
       <p style="font-size:13px;font-weight:700;color:#991b1b;margin-bottom:12px;">Choisis ce que tu veux effacer :</p>
-      <label style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #fee2e2;font-size:14px;">
-        <input type="checkbox" id="chkCaisse" style="width:18px;height:18px;"> Caisse (charges et reglages du jour)
-      </label>
-      <label style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #fee2e2;font-size:14px;">
-        <input type="checkbox" id="chkReservations" style="width:18px;height:18px;"> Reservations (tout le planning)
-      </label>
+
+      <div style="padding:10px 0;border-bottom:1px solid #fee2e2;">
+        <label style="display:flex;align-items:center;gap:10px;font-size:14px;margin-bottom:8px;">
+          <input type="checkbox" id="chkReservations" style="width:18px;height:18px;"> Reservations
+        </label>
+        <div id="scopeReservationsBox" style="display:none;padding-left:28px;">
+          <select id="scopeReservations" style="width:100%;padding:8px;border:1px solid #fca5a5;border-radius:8px;font-size:13px;margin-bottom:6px;">
+            <option value="day">Un jour precis</option>
+            <option value="month">Un mois precis</option>
+            <option value="year">Une annee precise</option>
+            <option value="all">Tout (toutes dates confondues)</option>
+          </select>
+          <input id="scopeReservationsDay" type="date" style="width:100%;padding:8px;border:1px solid #fca5a5;border-radius:8px;font-size:13px;">
+          <input id="scopeReservationsMonth" type="month" style="width:100%;padding:8px;border:1px solid #fca5a5;border-radius:8px;font-size:13px;display:none;">
+          <select id="scopeReservationsYear" style="width:100%;padding:8px;border:1px solid #fca5a5;border-radius:8px;font-size:13px;display:none;"></select>
+        </div>
+      </div>
+
+      <div style="padding:10px 0;border-bottom:1px solid #fee2e2;">
+        <label style="display:flex;align-items:center;gap:10px;font-size:14px;margin-bottom:8px;">
+          <input type="checkbox" id="chkCaisse" style="width:18px;height:18px;"> Caisse (charges et reglages du jour)
+        </label>
+        <div id="scopeCaisseBox" style="display:none;padding-left:28px;">
+          <select id="scopeCaisse" style="width:100%;padding:8px;border:1px solid #fca5a5;border-radius:8px;font-size:13px;margin-bottom:6px;">
+            <option value="day">Un jour precis</option>
+            <option value="month">Un mois precis</option>
+            <option value="year">Une annee precise</option>
+            <option value="all">Tout (toutes dates confondues)</option>
+          </select>
+          <input id="scopeCaisseDay" type="date" style="width:100%;padding:8px;border:1px solid #fca5a5;border-radius:8px;font-size:13px;">
+          <input id="scopeCaisseMonth" type="month" style="width:100%;padding:8px;border:1px solid #fca5a5;border-radius:8px;font-size:13px;display:none;">
+          <select id="scopeCaisseYear" style="width:100%;padding:8px;border:1px solid #fca5a5;border-radius:8px;font-size:13px;display:none;"></select>
+        </div>
+      </div>
+
       <label style="display:flex;align-items:center;gap:10px;padding:10px 0;font-size:14px;">
         <input type="checkbox" id="chkCommissions" style="width:18px;height:18px;"> Commissions et soldes des auberges
       </label>
+
       <div style="margin-top:16px;padding-top:14px;border-top:1px solid #fecaca;">
+        <p id="adminSummary" style="font-size:12.5px;color:#7f1d1d;margin-bottom:10px;line-height:1.5;"></p>
         <p style="font-size:12.5px;color:#7f1d1d;margin-bottom:8px;">Pour confirmer, ecris <b>EFFACER</b> ci-dessous :</p>
         <input id="fAdminConfirm" type="text" placeholder="Tape EFFACER" style="width:100%;padding:10px;border:1px solid #fca5a5;border-radius:8px;font-size:14px;margin-bottom:12px;">
         <button id="adminResetBtn" style="width:100%;padding:12px;background:#b91c1c;color:white;border:none;border-radius:9px;font-weight:700;font-size:14px;cursor:pointer;">Effacer definitivement</button>
       </div>
       <p id="adminResetMsg" style="font-size:13px;margin-top:12px;"></p>
     </div>
+  </div>
+
+  <div id="viewPersonnaliser" style="display:none;padding:16px;">
+    <h2 style="margin-bottom:6px;color:#5a3823;">🎛️ Personnaliser le formulaire</h2>
+    <p style="font-size:13px;color:#6b7280;margin-bottom:18px;">Reserve au patron. Change l'ordre des champs du formulaire de reservation avec les fleches.</p>
+    <div id="fieldOrderList" style="max-width:480px;"></div>
+    <div id="fieldHiddenSection" style="max-width:480px;margin-top:20px;">
+      <p style="font-size:13px;font-weight:700;color:#6b7280;margin-bottom:8px;">Champs masques (ne s'affichent pas dans le formulaire)</p>
+      <div id="fieldHiddenList"></div>
+    </div>
+    <button id="saveFieldOrderBtn" class="btn-secondary" style="margin-top:14px;">Enregistrer l'ordre</button>
+    <p id="fieldOrderMsg" style="font-size:13px;margin-top:10px;"></p>
   </div>
 </div>
 
@@ -229,56 +299,93 @@
 
     <div id="resForm" class="hidden">
     <div id="livePreview" style="background:#f9fafb;border-radius:10px;padding:10px;margin-bottom:12px;font-size:14px;min-height:20px;"></div>
-    <select id="fService">
-      <option value="">Service (massage / hammam)</option>
-    </select>
-    <input id="fClient" type="text" placeholder="Nom du client">
-    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
-      <button type="button" class="chip" data-nb="1" data-sexe="homme">1 Homme</button>
-      <button type="button" class="chip" data-nb="2" data-sexe="homme">2 Hommes</button>
-      <button type="button" class="chip" data-nb="3" data-sexe="homme">3 Hommes</button>
-      <button type="button" class="chip" data-nb="1" data-sexe="femme">1 Femme</button>
-      <button type="button" class="chip" data-nb="2" data-sexe="femme">2 Femmes</button>
-      <button type="button" class="chip" data-nb="3" data-sexe="femme">3 Femmes</button>
-    </div>
-    <div class="row2">
-      <input id="fNbPersonnes" type="number" min="1" placeholder="Nb personnes">
-      <select id="fSexe">
-        <option value="">Sexe</option>
-        <option value="homme">Homme</option>
-        <option value="femme">Femme</option>
+    <div id="formFieldsContainer">
+    <div class="form-block" data-block="service">
+      <select id="fService">
+        <option value="">Service (massage / hammam)</option>
       </select>
     </div>
-    <label style="display:block;font-size:13px;color:#6b7280;margin-bottom:6px;">Est-ce que le client est etranger ou arabe ?</label>
-    <select id="fOrigine">
-      <option value="etranger">Etranger</option>
-      <option value="arabe">Arabe</option>
-    </select>
-    <input id="fAuberge" type="text" list="aubergesDatalist" placeholder="Auberge (si le client vient d'une auberge)">
-    <datalist id="aubergesDatalist"></datalist>
-    <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:14px;">
-      <input id="fSansCommission" type="checkbox" style="width:auto;margin:0;"> Sans commission (auberge a deja regle)
-    </label>
-    <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:14px;">
-      <input id="fTaxi" type="checkbox" style="width:auto;margin:0;"> Taxi envoye pour ce client
-    </label>
-    <input id="fPrix" type="number" min="0" step="0.01" placeholder="Prix (dh)">
-    <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:14px;">
-      <input id="fGratuit" type="checkbox" style="width:auto;margin:0;"> Gratuit
-    </label>
-    <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:14px;">
-      <input id="fCarteCadeaux" type="checkbox" style="width:auto;margin:0;"> Carte cadeaux (deja payee)
-    </label>
-    <input id="fRemise" type="number" min="0" step="0.01" placeholder="Remise (dh)">
-    <input id="fDuration" type="number" min="1" value="1" placeholder="Duree (h)" style="display:none;">
-    <input id="fStaff" type="text" placeholder="Extras qui ont travaille (ex: Nawal, Mouna)">
-    <textarea id="fNote" placeholder="Note (visible dans le tableau)"></textarea>
-    <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:14px;">
-      <input id="fAlerte" type="checkbox" style="width:auto;margin:0;"> ⚠️ Marquer en jaune (attention equipe)
-    </label>
-    <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:14px;color:#dc2626;">
-      <input id="fReclamation" type="checkbox" style="width:auto;margin:0;"> Reclamation (client rembourse, extra non paye)
-    </label>
+    <div class="form-block" data-block="client">
+      <input id="fClient" type="text" placeholder="Nom du client">
+    </div>
+    <div class="form-block" data-block="chips">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
+        <button type="button" class="chip" data-nb="1" data-sexe="homme">1 Homme</button>
+        <button type="button" class="chip" data-nb="2" data-sexe="homme">2 Hommes</button>
+        <button type="button" class="chip" data-nb="3" data-sexe="homme">3 Hommes</button>
+        <button type="button" class="chip" data-nb="1" data-sexe="femme">1 Femme</button>
+        <button type="button" class="chip" data-nb="2" data-sexe="femme">2 Femmes</button>
+        <button type="button" class="chip" data-nb="3" data-sexe="femme">3 Femmes</button>
+      </div>
+    </div>
+    <div class="form-block" data-block="nbSexe">
+      <div class="row2">
+        <input id="fNbPersonnes" type="number" min="1" placeholder="Nb personnes">
+        <select id="fSexe">
+          <option value="">Sexe</option>
+          <option value="homme">Homme</option>
+          <option value="femme">Femme</option>
+        </select>
+      </div>
+      <input id="fDuration" type="number" min="1" value="1" placeholder="Duree (h)" style="display:none;">
+    </div>
+    <div class="form-block" data-block="origine">
+      <label style="display:block;font-size:13px;color:#6b7280;margin-bottom:6px;">Est-ce que le client est etranger ou arabe ?</label>
+      <select id="fOrigine">
+        <option value="etranger">Etranger</option>
+        <option value="arabe">Arabe</option>
+      </select>
+    </div>
+    <div class="form-block" data-block="auberge">
+      <input id="fAuberge" type="text" list="aubergesDatalist" placeholder="Auberge (si le client vient d'une auberge)">
+      <datalist id="aubergesDatalist"></datalist>
+    </div>
+    <div class="form-block" data-block="sansCommission">
+      <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:14px;">
+        <input id="fSansCommission" type="checkbox" style="width:auto;margin:0;"> Sans commission (auberge a deja regle)
+      </label>
+    </div>
+    <div class="form-block" data-block="taxi">
+      <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:14px;">
+        <input id="fTaxi" type="checkbox" style="width:auto;margin:0;"> Taxi envoye pour ce client
+      </label>
+    </div>
+    <div class="form-block" data-block="prix">
+      <input id="fPrix" type="number" min="0" step="0.01" placeholder="Prix (dh)">
+    </div>
+    <div class="form-block" data-block="gratuit">
+      <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:14px;">
+        <input id="fGratuit" type="checkbox" style="width:auto;margin:0;"> Gratuit
+      </label>
+    </div>
+    <div class="form-block" data-block="carteCadeaux">
+      <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:14px;">
+        <input id="fCarteCadeaux" type="checkbox" style="width:auto;margin:0;"> Carte cadeaux (deja payee)
+      </label>
+    </div>
+    <div class="form-block" data-block="remise">
+      <input id="fRemise" type="number" min="0" step="0.01" placeholder="Remise (dh)">
+    </div>
+    <div class="form-block" data-block="extras">
+      <p style="font-size:12.5px;color:#6b7280;margin-bottom:6px;">Extras qui ont travaille</p>
+      <div id="staffSelectedRow" class="chips" style="margin-bottom:6px;"></div>
+      <input id="fStaffSearch" type="text" placeholder="🔍 Rechercher un extra a ajouter..." style="margin-bottom:4px;">
+      <div id="staffSuggestions" style="margin-bottom:12px;"></div>
+    </div>
+    <div class="form-block" data-block="note">
+      <textarea id="fNote" placeholder="Note (visible dans le tableau)"></textarea>
+    </div>
+    <div class="form-block" data-block="alerte">
+      <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:14px;">
+        <input id="fAlerte" type="checkbox" style="width:auto;margin:0;"> ⚠️ Marquer en jaune (attention equipe)
+      </label>
+    </div>
+    <div class="form-block" data-block="reclamation">
+      <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:14px;color:#dc2626;">
+        <input id="fReclamation" type="checkbox" style="width:auto;margin:0;"> Reclamation (client rembourse, extra non paye)
+      </label>
+    </div>
+    </div>
     <div class="modal-actions">
       <button id="saveResBtn" class="btn-primary">Enregistrer</button>
       <button id="deleteResBtn" class="btn-danger hidden">Supprimer</button>
