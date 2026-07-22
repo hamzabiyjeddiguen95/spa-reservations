@@ -775,6 +775,12 @@ async function ensureTables() {
       );
     `);
     await pool.query('CREATE INDEX IF NOT EXISTS idx_commission_entries_auberge ON commission_entries(auberge_id);');
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS app_settings (
+        key TEXT PRIMARY KEY,
+        value TEXT
+      );
+    `);
     console.log('Table commission_entries prete.');
   } catch (e) {
     console.error('Erreur migration commission_entries:', e.message);
@@ -784,8 +790,15 @@ async function ensureTables() {
 // ---------- Import unique de l'historique Excel (une seule fois, si la table est vide) ----------
 async function importCommissionHistory() {
   try {
+    const { rows: flag } = await pool.query("SELECT value FROM app_settings WHERE key='commission_history_imported'");
+    if (flag[0] && flag[0].value === 'true') return; // deja fait une fois, pour de bon -> on ne reimporte jamais
     const { rows: cnt } = await pool.query('SELECT COUNT(*)::int AS n FROM commission_entries');
-    if (cnt[0].n > 0) return; // deja des donnees -> on ne reimporte pas
+    if (cnt[0].n > 0) {
+      // Des donnees existent deja (creees avant l'ajout de ce marqueur) -> on considere l'import comme fait,
+      // sans jamais l'ecraser, et on pose le marqueur pour que ca ne se reproduise plus.
+      await pool.query("INSERT INTO app_settings (key, value) VALUES ('commission_history_imported','true') ON CONFLICT (key) DO UPDATE SET value='true'");
+      return;
+    }
     const p = path.join(__dirname, 'db', 'commission_history_import.json');
     if (!fs.existsSync(p)) return;
     const data = JSON.parse(fs.readFileSync(p, 'utf-8'));
@@ -811,6 +824,7 @@ async function importCommissionHistory() {
         );
       }
     }
+    await pool.query("INSERT INTO app_settings (key, value) VALUES ('commission_history_imported','true') ON CONFLICT (key) DO UPDATE SET value='true'");
     console.log('Import historique commissions: ' + total + ' lignes.');
   } catch (e) {
     console.error('Erreur import historique commissions:', e.message);
