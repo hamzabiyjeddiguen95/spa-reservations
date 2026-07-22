@@ -422,7 +422,7 @@ function renderCalPopup() {
 
 const datesCache = {};
 
-function buildDaysHtml(gridStart, month, datesSet) {
+function buildDaysHtml(gridStart, month, datesCounts) {
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const todayStr2 = fmtDate(today);
   let html = '';
@@ -433,13 +433,13 @@ function buildDaysHtml(gridStart, month, datesSet) {
     const isOtherMonth = d.getMonth() !== month;
     const isSel = ds === currentDate;
     const isToday = ds === todayStr2;
-    const hasRes = datesSet ? datesSet.has(ds) : false;
+    const count = datesCounts ? (datesCounts.get(ds) || 0) : 0;
     let cls = 'cal-popup-day';
     if (isOtherMonth) cls += ' otherm';
     if (isSel) cls += ' selected';
     if (isToday) cls += ' today';
     html += '<div class="' + cls + '" data-date="' + ds + '">' + d.getDate() +
-      (hasRes ? '<div class="pd-dot"></div>' : '<div style="height:5px;"></div>') +
+      (count > 0 ? '<div class="pd-count">' + count + '</div>' : '<div style="height:14px;"></div>') +
     '</div>';
   }
   return html;
@@ -474,7 +474,7 @@ function renderPopupMonthDays() {
   authFetch(`${API}/api/reservations-dates?start=${rangeStart}&end=${rangeEnd}`)
     .then((res) => res.json())
     .then((list) => {
-      datesCache[cacheKey] = new Set(list);
+      datesCache[cacheKey] = new Map(list.map((x) => [x.date, x.count]));
       // Ne mettre a jour que si on est toujours sur ce meme mois
       if (popupMode === 'month' && popupViewDate.getFullYear() === year && popupViewDate.getMonth() === month) {
         el.innerHTML = buildDaysHtml(gridStart, month, datesCache[cacheKey]);
@@ -520,7 +520,7 @@ function renderPopupYear() {
   authFetch(`${API}/api/reservations-dates?start=${year}-01-01&end=${year}-12-31`)
     .then((res) => res.json())
     .then((list) => {
-      datesCache[cacheKey] = new Set(list.map((ds) => ds.slice(0, 7)));
+      datesCache[cacheKey] = new Set(list.filter((x) => x.count > 0).map((x) => x.date.slice(0, 7)));
       if (popupMode === 'year' && popupViewDate.getFullYear() === year) {
         el.innerHTML = buildYearHtml(year, datesCache[cacheKey]);
         bindYearClicks(year);
@@ -977,6 +977,11 @@ async function loadReservations() {
   reservations = await res.json();
   renderGrid();
   renderDayCount();
+  // Le calendrier (popup mois/annee) garde en cache les dates qui ont des reservations
+  // pour eviter de refaire la requete a chaque ouverture. Mais des reservations ont pu
+  // etre ajoutees/supprimees (ici, via Zone Admin, etc.) : on vide ce cache pour que
+  // les points rouges du calendrier soient toujours a jour la prochaine fois qu'il s'ouvre.
+  Object.keys(datesCache).forEach((k) => delete datesCache[k]);
 }
 
 // Une reservation "incluse" (massage ou hammam offert dans un pack Taziri/Royal)

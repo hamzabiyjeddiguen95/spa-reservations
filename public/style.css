@@ -314,8 +314,8 @@ body {
 .cal-popup-day.otherm { color:#d1d5db; }
 .cal-popup-day.today:not(.selected) { box-shadow:inset 0 0 0 2px #22c55e; }
 .cal-popup-day.selected { background:linear-gradient(135deg,#4a2c1d,#8a6a3e); color:white; }
-.cal-popup-day .pd-dot { width:5px; height:5px; border-radius:50%; background:#ef4444; margin-top:2px; }
-.cal-popup-day.selected .pd-dot { background:white; }
+.cal-popup-day .pd-count { min-width:14px; height:14px; padding:0 3px; border-radius:7px; background:#ef4444; color:white; font-size:9px; font-weight:800; line-height:14px; margin-top:2px; }
+.cal-popup-day.selected .pd-count { background:white; color:#5a3823; }
 .cal-popup-yeargrid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
 .cal-popup-yearmonth { background:#f9fafb; border-radius:12px; padding:14px 4px; text-align:center; font-size:13.5px; font-weight:600; color:#374151; cursor:pointer; text-transform:capitalize; }
 .cal-popup-yearmonth.selected { background:linear-gradient(135deg,#4a2c1d,#8a6a3e); color:white; }

@@ -136,10 +136,15 @@ app.get('/api/reservations-dates', auth, async (req, res) => {
   const { start, end } = req.query;
   if (!start || !end) return res.status(400).json({ error: 'start et end requis (YYYY-MM-DD)' });
   const { rows } = await pool.query(
-    'SELECT DISTINCT date FROM reservations WHERE date BETWEEN $1 AND $2',
+    `SELECT date, COUNT(*) FILTER (WHERE note IS NULL OR note NOT LIKE 'Inclus dans le pack%')::int AS count
+     FROM reservations WHERE date BETWEEN $1 AND $2
+     GROUP BY date`,
     [start, end]
   );
-  res.json(rows.map((r) => (r.date instanceof Date ? r.date.toISOString().slice(0, 10) : r.date)));
+  res.json(rows.map((r) => ({
+    date: r.date instanceof Date ? r.date.toISOString().slice(0, 10) : r.date,
+    count: r.count,
+  })));
 });
 
 app.get('/api/rooms', auth, async (req, res) => {
