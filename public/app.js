@@ -633,6 +633,9 @@ function switchView(view) {
   if (view === 'commission') {
     switchCommTab('solde');
   }
+  if (view === 'reservations') {
+    setTimeout(resizeGridWrapper, 0);
+  }
 }
 
 function switchCommTab(tab) {
@@ -903,6 +906,17 @@ async function loadReservations() {
   const res = await authFetch(`${API}/api/reservations?date=${date}`);
   reservations = await res.json();
   renderGrid();
+  renderDayCount();
+}
+
+// Une reservation "incluse" (massage ou hammam offert dans un pack Taziri/Royal)
+// ne compte jamais comme un client separe : c'est la suite du meme rituel.
+function isIncludedSession(r) {
+  return !!(r.note && r.note.indexOf('Inclus dans le pack') === 0);
+}
+function renderDayCount() {
+  const n = reservations.filter((r) => !isIncludedSession(r)).length;
+  $('dayCount').textContent = n ? `${n} reservation${n > 1 ? 's' : ''} ce jour` : '';
 }
 
 // ---------- Rendering ----------
@@ -1040,6 +1054,22 @@ function renderGrid() {
 
     grid.appendChild(row);
   });
+
+  resizeGridWrapper();
+}
+
+// Calcule et fixe la hauteur exacte (en pixels) du tableau de reservations,
+// pour qu'il remplisse tout l'ecran sans trou en bas et que le sticky
+// fonctionne correctement (Safari se comporte mal si la hauteur vient du
+// flex-grow au lieu d'une valeur explicite).
+function resizeGridWrapper() {
+  const wrapper = $('gridWrapper');
+  if (!wrapper || wrapper.offsetParent === null) return;
+  const controlsBar = wrapper.parentElement.querySelector('#addHourBtn');
+  const controlsHeight = controlsBar ? controlsBar.closest('div').offsetHeight : 0;
+  const top = wrapper.getBoundingClientRect().top;
+  const available = window.innerHeight - top - controlsHeight;
+  wrapper.style.height = Math.max(240, Math.floor(available)) + 'px';
 }
 
 function escapeHtml(str) {
@@ -1084,19 +1114,26 @@ function renderSlotList() {
     wrap.innerHTML = '';
   } else {
     wrap.innerHTML = list.map((res) => {
+      const svc = services.find((s) => s.id === res.service_id);
       const genreColor = res.sexe === 'femme' ? '#db2777' : (res.sexe === 'homme' ? '#2563eb' : '#374151');
+      const aubergeColor = res.sans_commission ? '#1f2937' : '#ea580c';
+      const nb = res.nb_personnes || 1;
       return `
-      <div style="border:1px solid #e5e7eb;border-radius:10px;padding:10px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">
-        <div>
-          <div style="font-weight:800;color:${genreColor};">${res.nb_personnes || 1} ${escapeHtml(res.sexe || '')}${(res.nb_personnes || 1) > 1 ? 's' : ''}</div>
-          <div style="font-size:12px;color:#6b7280;">${res.origine ? escapeHtml(res.origine) + ' - ' : ''}${res.carte_cadeaux ? 'Prix: carte cadeaux - ' : (res.prix !== null && res.prix !== undefined && res.prix !== '' ? (Number(res.prix) === 0 ? 'Gratuit - ' : res.prix + ' dh - ') : '')}${escapeHtml(res.client_type || '')}${res.auberge ? ' - ' + escapeHtml(res.auberge) : ''}${res.staff_names ? ' - ' + escapeHtml(res.staff_names) : ''}${res.taxi ? ' - 🚕' : ''}</div>
-        </div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;">
-          <button data-edit="${res.id}" style="padding:6px 10px;">Modifier</button>
-          <button data-move="${res.id}" style="padding:6px 10px;">Deplacer</button>
-          <button data-copy="${res.id}" style="padding:6px 10px;">Copier</button>
-          ${(res.nb_personnes || 1) > 1 ? `<button data-split="${res.id}" style="padding:6px 10px;color:#7c3aed;">Diviser</button>` : ''}
-          <button data-del="${res.id}" style="padding:6px 10px;color:#dc2626;">Suppr</button>
+      <div class="slot-card" data-id="${res.id}">
+        ${svc ? `<div style="font-weight:700;color:#7c3aed;">${escapeHtml(svc.name)}</div>` : ''}
+        ${res.sexe ? `<div style="font-weight:800;color:${genreColor};">${nb} ${escapeHtml(res.sexe)}${nb > 1 ? 's' : ''}</div>` : ''}
+        ${res.origine ? `<div style="color:#6b7280;">${escapeHtml(res.origine)}</div>` : ''}
+        ${res.auberge ? `<div style="font-weight:700;color:${aubergeColor};">${escapeHtml(res.auberge)}${res.sans_commission ? ' - sans commission' : ''}</div>` : ''}
+        ${res.client_type ? `<div style="font-weight:700;">${escapeHtml(res.client_type)}</div>` : ''}
+        ${res.carte_cadeaux ? '<div style="color:#059669;font-weight:700;">Prix: carte cadeaux</div>' : (res.prix !== null && res.prix !== undefined && res.prix !== '' ? `<div style="color:#059669;font-weight:700;">${Number(res.prix) === 0 ? 'Gratuit' : res.prix + ' dh'}</div>` : '')}
+        ${res.staff_names ? `<div style="color:#2563eb;">${escapeHtml(res.staff_names)}</div>` : ''}
+        ${res.taxi ? '<div>🚕 taxi</div>' : ''}
+        <div class="row">
+          <button class="slot-btn-edit" data-edit="${res.id}">Modifier</button>
+          <button class="slot-btn-move" data-move="${res.id}">Deplacer</button>
+          <button class="slot-btn-copy" data-copy="${res.id}">Copier</button>
+          ${nb > 1 ? `<button class="slot-btn-split" data-split="${res.id}">Diviser</button>` : ''}
+          <button class="slot-btn-del" data-del="${res.id}">Suppr</button>
         </div>
       </div>
     `;
@@ -1831,3 +1868,4 @@ async function handleAdminReset() {
 init();
 $('closeXBtn').addEventListener('click', closeModal);
 window.addEventListener('resize', () => { if (rooms.length) renderGrid(); });
+window.addEventListener('orientationchange', () => { setTimeout(resizeGridWrapper, 200); });
