@@ -85,6 +85,7 @@ body {
   top: 0;
   z-index: 20;
   box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  flex: 0 0 auto;
 }
 .topbar-logo { height: 28px; width: auto; flex: none; }
 .hamburger-btn { background:rgba(255,255,255,0.15); color:#f0e6d2; border:none; width:36px; height:36px; border-radius:8px; font-size:16px; cursor:pointer; flex:none; }
@@ -138,25 +139,25 @@ body {
   min-height: 100dvh;
 }
 #viewReservations {
-  flex: 1;
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   min-height: 0;
 }
 .grid-wrapper {
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
+  display: flex;
+  flex-direction: column;
   -webkit-overflow-scrolling: touch;
 }
 .grid {
-  display: flex;
-  flex-direction: column;
+  flex: 1 1 auto;
+  display: grid;
   min-width: max-content;
-  min-height: 100%;
-}
-.grid > .grid-row {
-  flex: 1 1 0;
+  grid-template-rows: auto;
+  grid-auto-rows: 1fr;
 }
 .grid-row {
   display: grid;
