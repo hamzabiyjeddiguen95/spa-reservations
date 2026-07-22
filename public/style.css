@@ -101,7 +101,9 @@ body {
 .sidebar-header { display:flex; align-items:center; gap:8px; padding:0 16px 18px; border-bottom:1px solid rgba(255,255,255,0.1); margin-bottom:10px; }
 .sidebar-header span { color:#f0e6d2; font-weight:700; font-size:13px; }
 .sidebar-nav { display:flex; flex-direction:column; gap:2px; padding:0 10px; }
-.sidebar-item { background:none; border:none; text-align:left; color:#e8dcc8; padding:11px 12px; border-radius:8px; font-size:14px; cursor:pointer; }
+.sidebar-item { background:none; border:none; text-align:left; color:#e8dcc8; padding:11px 12px; border-radius:8px; font-size:14px; cursor:pointer; touch-action:none; }
+.sidebar-item.sidebar-dragging { opacity:0.35; background:rgba(255,255,255,0.08); }
+.res-cell [data-res-id] { touch-action: none; }
 .sidebar-item:hover { background:rgba(255,255,255,0.08); }
 .sidebar-item.active { background:linear-gradient(135deg,#5a3823,#8a6a3e); color:white; font-weight:600; }
 .nav-btn {

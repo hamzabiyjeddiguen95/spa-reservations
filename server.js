@@ -653,6 +653,40 @@ app.put('/api/form-order', auth, requireAdmin, async (req, res) => {
   }
 });
 
+// ---------- Ordre personnalise des elements du menu lateral ----------
+const DEFAULT_SIDEBAR_ORDER = ['reservations', 'caisse', 'auberges', 'extras', 'commission', 'admin', 'personnaliser'];
+
+app.get('/api/sidebar-order', auth, async (req, res) => {
+  try {
+    const { rows } = await pool.query("SELECT value FROM app_settings WHERE key='sidebar_order'");
+    const saved = rows[0] ? JSON.parse(rows[0].value) : null;
+    const order = (Array.isArray(saved) && saved.length === DEFAULT_SIDEBAR_ORDER.length) ? saved : DEFAULT_SIDEBAR_ORDER;
+    res.json({ order });
+  } catch (e) {
+    res.json({ order: DEFAULT_SIDEBAR_ORDER });
+  }
+});
+
+app.put('/api/sidebar-order', auth, requireAdmin, async (req, res) => {
+  const { order } = req.body;
+  if (!Array.isArray(order)) return res.status(400).json({ error: 'Ordre invalide' });
+  const a = order.slice().sort();
+  const b = DEFAULT_SIDEBAR_ORDER.slice().sort();
+  if (JSON.stringify(a) !== JSON.stringify(b)) {
+    return res.status(400).json({ error: 'Ordre invalide (elements manquants ou en double)' });
+  }
+  try {
+    await pool.query(
+      "INSERT INTO app_settings (key, value) VALUES ('sidebar_order',$1) ON CONFLICT (key) DO UPDATE SET value=$1",
+      [JSON.stringify(order)]
+    );
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 
 const toISO = (d) => (d instanceof Date ? d.toISOString().slice(0, 10) : d);
 
@@ -875,7 +909,7 @@ function scopeToRange(scope) {
 }
 
 app.post('/api/admin/reset-data', auth, requireAdmin, async (req, res) => {
-  const { reservations, caisse, commissions } = req.body;
+  const { reservations, caisse, commissions, auberges } = req.body;
   const cleared = [];
   let deletedCount = 0;
   try {
@@ -904,6 +938,14 @@ app.post('/api/admin/reset-data', auth, requireAdmin, async (req, res) => {
       await pool.query('UPDATE auberges SET opening_balance=0');
       deletedCount += commResult.rowCount;
       cleared.push('commissions');
+    }
+    if (auberges) {
+      // La liste des auberges elle-meme. Attention : a cause de la structure de la
+      // base (ON DELETE CASCADE), ceci efface aussi automatiquement toutes les
+      // commissions/soldes liees a ces auberges, meme si "commissions" n'est pas coche.
+      const aubResult = await pool.query('DELETE FROM auberges');
+      deletedCount += aubResult.rowCount;
+      cleared.push('auberges');
     }
     res.json({ ok: true, cleared, deletedCount });
   } catch (e) {

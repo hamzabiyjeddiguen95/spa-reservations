@@ -82,6 +82,7 @@ function init() {
     updateAdminSummary();
   });
   $('chkCommissions').addEventListener('change', updateAdminSummary);
+  $('chkAuberges').addEventListener('change', updateAdminSummary);
   $('scopeReservations').addEventListener('change', () => { toggleScopeInputs('Reservations'); updateAdminSummary(); });
   $('scopeCaisse').addEventListener('change', () => { toggleScopeInputs('Caisse'); updateAdminSummary(); });
   ['scopeReservationsDay', 'scopeReservationsMonth', 'scopeReservationsYear'].forEach((id) => $(id).addEventListener('change', updateAdminSummary));
@@ -869,6 +870,8 @@ function showMain() {
   loadAuberges();
   loadExtras();
   loadFormOrder();
+  loadSidebarOrder();
+  initSidebarDrag();
 }
 
 async function authFetch(url, options = {}) {
@@ -2170,6 +2173,7 @@ function updateAdminSummary() {
   if ($('chkReservations').checked) parts.push(`les reservations ${scopeLabel('Reservations')}`);
   if ($('chkCaisse').checked) parts.push(`la caisse ${scopeLabel('Caisse')}`);
   if ($('chkCommissions').checked) parts.push('les commissions et soldes des auberges (tout)');
+  if ($('chkAuberges').checked) parts.push('la liste des auberges (+ leurs commissions/soldes restants)');
   $('adminSummary').textContent = parts.length ? 'Tu vas effacer : ' + parts.join(' + ') : '';
 }
 
@@ -2186,9 +2190,10 @@ async function handleAdminReset() {
   const reservations = $('chkReservations').checked;
   const caisse = $('chkCaisse').checked;
   const commissions = $('chkCommissions').checked;
+  const auberges = $('chkAuberges').checked;
   const msg = $('adminResetMsg');
 
-  if (!caisse && !reservations && !commissions) {
+  if (!caisse && !reservations && !commissions && !auberges) {
     msg.style.color = '#b91c1c';
     msg.textContent = 'Coche au moins une case.';
     return;
@@ -2203,12 +2208,14 @@ async function handleAdminReset() {
   if (reservations) parts.push(`les reservations ${scopeLabel('Reservations')}`);
   if (caisse) parts.push(`la caisse ${scopeLabel('Caisse')}`);
   if (commissions) parts.push('les commissions et soldes des auberges');
+  if (auberges) parts.push('la liste des auberges elle-meme (et donc aussi leurs commissions/soldes restants)');
   if (!confirm(`Es-tu sur ? Ceci va effacer definitivement : ${parts.join(', ')}. Cette action est irreversible.`)) return;
 
   const payload = {
     reservations: reservations ? buildScopePayload('Reservations') : null,
     caisse: caisse ? buildScopePayload('Caisse') : null,
     commissions,
+    auberges,
   };
 
   const btn = $('adminResetBtn');
@@ -2230,6 +2237,7 @@ async function handleAdminReset() {
       $('chkCaisse').checked = false;
       $('chkReservations').checked = false;
       $('chkCommissions').checked = false;
+      $('chkAuberges').checked = false;
       $('scopeReservationsBox').style.display = 'none';
       $('scopeCaisseBox').style.display = 'none';
       $('fAdminConfirm').value = '';
@@ -2389,6 +2397,116 @@ async function saveFieldOrder() {
   }
 }
 $('saveFieldOrderBtn').addEventListener('click', saveFieldOrder);
+
+// ---------- Ordre personnalise des elements du menu lateral (glisser directement dans le menu) ----------
+const DEFAULT_SIDEBAR_ORDER_CLIENT = ['reservations', 'caisse', 'auberges', 'extras', 'commission', 'admin', 'personnaliser'];
+let sidebarOrder = DEFAULT_SIDEBAR_ORDER_CLIENT.slice();
+
+async function loadSidebarOrder() {
+  try {
+    const res = await authFetch(`${API}/api/sidebar-order`);
+    const data = await res.json();
+    sidebarOrder = (data.order && data.order.length === DEFAULT_SIDEBAR_ORDER_CLIENT.length) ? data.order : DEFAULT_SIDEBAR_ORDER_CLIENT.slice();
+  } catch (e) {
+    sidebarOrder = DEFAULT_SIDEBAR_ORDER_CLIENT.slice();
+  }
+  applySidebarOrder(sidebarOrder);
+}
+
+function applySidebarOrder(order) {
+  const nav = document.querySelector('.sidebar-nav');
+  if (!nav) return;
+  order.forEach((key) => {
+    const el = nav.querySelector(`.sidebar-item[data-view="${key}"]`);
+    if (el) nav.appendChild(el);
+  });
+}
+
+async function saveSidebarOrder() {
+  try {
+    await authFetch(`${API}/api/sidebar-order`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ order: sidebarOrder }),
+    });
+  } catch (e) { /* silencieux : l'ordre reste correct a l'ecran meme si la sauvegarde echoue */ }
+}
+
+function initSidebarDrag() {
+  if (!currentUser || !currentUser.is_admin) return; // seul le patron peut reorganiser le menu
+  document.querySelectorAll('.sidebar-item').forEach((btn) => {
+    btn.addEventListener('pointerdown', onSidebarPointerDown);
+  });
+}
+
+function onSidebarPointerDown(e) {
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
+  const btn = e.currentTarget;
+  const startX = e.clientX;
+  const startY = e.clientY;
+  let dragging = false;
+
+  const pressTimer = setTimeout(() => { dragging = true; beginSidebarDrag(btn, startX, startY); }, DRAG_PRESS_DELAY);
+
+  function onMove(ev) {
+    if (!dragging) {
+      if (Math.abs(ev.clientX - startX) > DRAG_MOVE_THRESHOLD || Math.abs(ev.clientY - startY) > DRAG_MOVE_THRESHOLD) {
+        clearTimeout(pressTimer);
+        dragging = true;
+        beginSidebarDrag(btn, startX, startY);
+      } else {
+        return;
+      }
+    }
+    moveDragGhost(ev.clientX, ev.clientY);
+    reorderSidebarLive(btn, ev.clientY);
+  }
+
+  function onUp() {
+    clearTimeout(pressTimer);
+    window.removeEventListener('pointermove', onMove);
+    window.removeEventListener('pointerup', onUp);
+    window.removeEventListener('pointercancel', onUp);
+    if (dragging) {
+      finishSidebarDrag(btn);
+      lastDragEndAt = performance.now();
+    }
+  }
+
+  window.addEventListener('pointermove', onMove);
+  window.addEventListener('pointerup', onUp);
+  window.addEventListener('pointercancel', onUp);
+}
+
+function beginSidebarDrag(btn, x, y) {
+  if (navigator.vibrate) navigator.vibrate(20);
+  btn.classList.add('sidebar-dragging');
+  dragGhostEl = document.createElement('div');
+  dragGhostEl.className = 'drag-ghost';
+  dragGhostEl.textContent = btn.textContent.trim();
+  document.body.appendChild(dragGhostEl);
+  moveDragGhost(x, y);
+}
+
+function reorderSidebarLive(btn, y) {
+  const items = Array.from(document.querySelectorAll('.sidebar-item'));
+  const others = items.filter((el) => el !== btn);
+  let targetIndex = others.length;
+  for (let i = 0; i < others.length; i++) {
+    const rect = others[i].getBoundingClientRect();
+    if (y < rect.top + rect.height / 2) { targetIndex = i; break; }
+  }
+  const nav = btn.parentElement;
+  const ref = others[targetIndex];
+  if (ref) nav.insertBefore(btn, ref); else nav.appendChild(btn);
+}
+
+function finishSidebarDrag(btn) {
+  btn.classList.remove('sidebar-dragging');
+  if (dragGhostEl) { dragGhostEl.remove(); dragGhostEl = null; }
+  sidebarOrder = Array.from(document.querySelectorAll('.sidebar-item')).map((el) => el.dataset.view);
+  saveSidebarOrder();
+}
 
 init();
 $('closeXBtn').addEventListener('click', closeModal);
