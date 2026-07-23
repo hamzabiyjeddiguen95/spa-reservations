@@ -150,6 +150,7 @@ function init() {
   ['scopeReservationsDay', 'scopeReservationsMonth', 'scopeReservationsYear'].forEach((id) => $(id).addEventListener('change', updateAdminSummary));
   ['scopeCaisseDay', 'scopeCaisseMonth', 'scopeCaisseYear'].forEach((id) => $(id).addEventListener('change', updateAdminSummary));
   $('cashDayDate').addEventListener('change', () => loadCashDay($('cashDayDate').value));
+  $('revenueMonthInput').addEventListener('change', () => loadRevenueMonth($('revenueMonthInput').value));
   $('cashDayPrevBtn').addEventListener('click', () => {
     const d = new Date($('cashDayDate').value + 'T00:00:00');
     d.setDate(d.getDate() - 1);
@@ -715,10 +716,13 @@ function switchView(view) {
   $('viewCommission').style.display = view === 'commission' ? 'block' : 'none';
   $('viewAdmin').style.display = view === 'admin' ? 'block' : 'none';
   $('viewPersonnaliser').style.display = view === 'personnaliser' ? 'block' : 'none';
+  $('viewRoles').style.display = view === 'roles' ? 'block' : 'none';
   closeSidebar();
   if (view === 'caisse') {
     $('cashDayDate').value = currentDate;
     loadCashDay(currentDate);
+    if (!$('revenueMonthInput').value) $('revenueMonthInput').value = currentDate.slice(0, 7);
+    loadRevenueMonth($('revenueMonthInput').value);
   }
   if (view === 'auberges') {
     $('fAubergeSearch').value = '';
@@ -739,6 +743,9 @@ function switchView(view) {
   if (view === 'personnaliser') {
     renderFieldOrderList();
   }
+  if (view === 'roles') {
+    loadTeamRoles();
+  }
 }
 
 function switchCommTab(tab) {
@@ -756,6 +763,25 @@ function switchCommTab(tab) {
 
 // ---------- Calcul de caisse ----------
 let cashDayData = null;
+
+async function loadRevenueMonth(month) {
+  const totalEl = $('revenueMonthTotal');
+  const countEl = $('revenueMonthCount');
+  totalEl.textContent = '...';
+  countEl.textContent = '';
+  try {
+    const res = await authFetch(`${API}/api/revenue-month?month=${month}`);
+    const data = await res.json();
+    if (!res.ok) {
+      totalEl.textContent = 'Erreur';
+      return;
+    }
+    totalEl.textContent = fmtMoney(data.total);
+    countEl.textContent = `${data.nb} reservation${data.nb > 1 ? 's' : ''} facturee${data.nb > 1 ? 's' : ''} ce mois`;
+  } catch (e) {
+    totalEl.textContent = 'Erreur de connexion';
+  }
+}
 
 async function loadCashDay(date) {
   $('cashDayBody').innerHTML = '<p style="color:#6b7280;font-size:13px;">Chargement...</p>';
@@ -924,7 +950,17 @@ function showMain() {
   $('userLabel').textContent = currentUser.full_name;
   $('navAdmin').classList.toggle('hidden', !currentUser.is_admin);
   $('navPersonnaliser').classList.toggle('hidden', !currentUser.is_admin);
+  $('navRoles').classList.toggle('hidden', !currentUser.is_admin);
   $('editHoursBtn').classList.toggle('hidden', !currentUser.is_admin);
+  const perms = currentUser.permissions || {};
+  $('navReservations').classList.toggle('hidden', !perms.reservations);
+  $('navCaisse').classList.toggle('hidden', !perms.caisse);
+  $('navCommission').classList.toggle('hidden', !perms.commission);
+  $('navAuberges').classList.toggle('hidden', !perms.auberges);
+  $('navExtras').classList.toggle('hidden', !perms.extras);
+  // Ouvrir automatiquement la premiere section que cette personne peut voir
+  const firstAllowed = ['reservations', 'caisse', 'auberges', 'extras', 'commission'].find((k) => perms[k]);
+  if (firstAllowed && !perms.reservations) switchView(firstAllowed);
   renderCalendar();
   loadRoomsAndReservations();
   loadAuberges();
@@ -934,6 +970,7 @@ function showMain() {
   loadHoursRange();
   initSidebarDrag();
   connectLiveUpdates();
+  if (currentUser.is_admin) loadTeamRoles();
 }
 
 async function authFetch(url, options = {}) {
@@ -2441,6 +2478,69 @@ function todayISODateOnly() {
 }
 function parseDate(iso) { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d); }
 
+// ---------- Roles de l'equipe (reserve au patron) ----------
+const PERMISSION_LABELS = {
+  reservations: '📅 Reservations',
+  caisse: '💰 Caisse',
+  commission: '📋 Commission',
+  auberges: '🏨 Auberges',
+  extras: '👥 Extras',
+};
+
+async function loadTeamRoles() {
+  const wrap = $('teamList');
+  wrap.innerHTML = '<p style="color:#6b7280;font-size:13px;">Chargement...</p>';
+  try {
+    const res = await authFetch(`${API}/api/team`);
+    const team = await res.json();
+    wrap.innerHTML = team.map((u) => {
+      if (u.is_admin) {
+        return `
+          <div style="background:#fef3c7;border-radius:12px;padding:14px;margin-bottom:10px;">
+            <div style="font-weight:800;color:#92400e;">${escapeHtml(u.full_name)}</div>
+            <div style="font-size:12.5px;color:#92400e;">Patron - acces complet a tout</div>
+          </div>`;
+      }
+      const checks = Object.keys(PERMISSION_LABELS).map((key) => `
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;padding:4px 0;">
+          <input type="checkbox" data-user-id="${u.id}" data-perm="${key}" ${u.permissions[key] ? 'checked' : ''}>
+          ${PERMISSION_LABELS[key]}
+        </label>`).join('');
+      return `
+        <div style="background:white;border:1px solid #e5e7eb;border-radius:12px;padding:14px;margin-bottom:10px;">
+          <div style="font-weight:700;margin-bottom:8px;">${escapeHtml(u.full_name)} <span style="font-weight:400;color:#9ca3af;font-size:12px;">(${escapeHtml(u.username)})</span></div>
+          ${checks}
+        </div>`;
+    }).join('');
+    wrap.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
+      cb.addEventListener('change', () => saveTeamPermission(cb.dataset.userId, cb.dataset.perm, cb.checked));
+    });
+  } catch (e) {
+    wrap.innerHTML = '<p style="color:#dc2626;font-size:13px;">Erreur de chargement.</p>';
+  }
+}
+
+async function saveTeamPermission(userId, permKey, value) {
+  const team = await (await authFetch(`${API}/api/team`)).json();
+  const user = team.find((u) => String(u.id) === String(userId));
+  if (!user) return;
+  const newPermissions = { ...user.permissions, [permKey]: value };
+  try {
+    const res = await authFetch(`${API}/api/team/${userId}/permissions`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ permissions: newPermissions }),
+    });
+    if (!res.ok) {
+      alert('Erreur lors de la mise a jour des acces.');
+      loadTeamRoles();
+    }
+  } catch (e) {
+    alert('Erreur de connexion.');
+    loadTeamRoles();
+  }
+}
+
 function initAdminScopeControls() {
   fillYearSelect($('scopeReservationsYear'));
   fillYearSelect($('scopeCaisseYear'));
@@ -2704,7 +2804,7 @@ async function saveFieldOrder() {
 $('saveFieldOrderBtn').addEventListener('click', saveFieldOrder);
 
 // ---------- Ordre personnalise des elements du menu lateral (glisser directement dans le menu) ----------
-const DEFAULT_SIDEBAR_ORDER_CLIENT = ['reservations', 'caisse', 'auberges', 'extras', 'commission', 'admin', 'personnaliser'];
+const DEFAULT_SIDEBAR_ORDER_CLIENT = ['reservations', 'caisse', 'auberges', 'extras', 'commission', 'admin', 'personnaliser', 'roles'];
 let sidebarOrder = DEFAULT_SIDEBAR_ORDER_CLIENT.slice();
 
 async function loadSidebarOrder() {

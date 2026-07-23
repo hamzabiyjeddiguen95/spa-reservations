@@ -121,6 +121,20 @@ setInterval(() => {
 }, 25000);
 
 // ---------- Routes: Auth ----------
+const PERMISSION_KEYS = ['reservations', 'caisse', 'commission', 'auberges', 'extras'];
+
+function effectivePermissions(user) {
+  if (user.is_admin) {
+    const all = {};
+    PERMISSION_KEYS.forEach((k) => { all[k] = true; });
+    return all;
+  }
+  const stored = user.permissions || {};
+  const result = {};
+  PERMISSION_KEYS.forEach((k) => { result[k] = !!stored[k]; });
+  return result;
+}
+
 app.post('/api/login', async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ error: 'Manque username/password' });
@@ -130,12 +144,13 @@ app.post('/api/login', async (req, res) => {
     if (!user) return res.status(401).json({ error: 'Identifiants incorrects' });
     const ok = await bcrypt.compare(password, user.password_hash);
     if (!ok) return res.status(401).json({ error: 'Identifiants incorrects' });
+    const permissions = effectivePermissions(user);
     const token = jwt.sign(
-      { id: user.id, username: user.username, full_name: user.full_name, is_admin: user.is_admin },
+      { id: user.id, username: user.username, full_name: user.full_name, is_admin: user.is_admin, permissions },
       JWT_SECRET,
       { expiresIn: '30d' }
     );
-    res.json({ token, user: { username: user.username, full_name: user.full_name, is_admin: user.is_admin } });
+    res.json({ token, user: { username: user.username, full_name: user.full_name, is_admin: user.is_admin, permissions } });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'Erreur serveur' });
@@ -202,6 +217,36 @@ app.post('/api/users', async (req, res) => {
     res.json({ ok: true });
   } catch (e) {
     if (e.code === '23505') return res.status(409).json({ error: 'Ce username existe deja' });
+    console.error(e);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// ---------- Roles : liste de l'equipe + permissions par personne (reserve au patron) ----------
+app.get('/api/team', auth, requireAdmin, async (req, res) => {
+  try {
+    const { rows } = await pool.query('SELECT id, username, full_name, is_admin, permissions FROM users ORDER BY is_admin DESC, full_name ASC');
+    res.json(rows.map((u) => ({
+      id: u.id, username: u.username, full_name: u.full_name, is_admin: u.is_admin,
+      permissions: effectivePermissions(u),
+    })));
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+app.put('/api/team/:id/permissions', auth, requireAdmin, async (req, res) => {
+  const { id } = req.params;
+  const { permissions } = req.body;
+  if (!permissions || typeof permissions !== 'object') return res.status(400).json({ error: 'Permissions invalides' });
+  const clean = {};
+  PERMISSION_KEYS.forEach((k) => { clean[k] = !!permissions[k]; });
+  try {
+    const { rows } = await pool.query('UPDATE users SET permissions=$1 WHERE id=$2 RETURNING id, is_admin', [JSON.stringify(clean), id]);
+    if (!rows[0]) return res.status(404).json({ error: 'Compte introuvable' });
+    res.json({ ok: true, permissions: rows[0].is_admin ? effectivePermissions(rows[0]) : clean });
+  } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'Erreur serveur' });
   }
@@ -505,6 +550,24 @@ async function computeDayCash(dateStr) {
   };
 }
 
+// Chiffre d'affaires total d'un mois (pour Caisse - utile pour un suivi mensuel, ex. le patron ou son pere)
+app.get('/api/revenue-month', auth, async (req, res) => {
+  const { month } = req.query; // format YYYY-MM
+  if (!month || !/^\d{4}-\d{2}$/.test(month)) return res.status(400).json({ error: 'month requis (YYYY-MM)' });
+  try {
+    const { rows } = await pool.query(
+      `SELECT COALESCE(SUM(prix), 0) AS total, COUNT(*) AS nb
+       FROM reservations
+       WHERE to_char(date, 'YYYY-MM') = $1 AND (reclamation IS NOT TRUE) AND prix IS NOT NULL`,
+      [month]
+    );
+    res.json({ month, total: parseFloat(rows[0].total), nb: parseInt(rows[0].nb, 10) });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 app.get('/api/cash-day', auth, async (req, res) => {
   const { date } = req.query;
   if (!date) return res.status(400).json({ error: 'date requise (YYYY-MM-DD)' });
@@ -737,7 +800,7 @@ app.put('/api/form-order', auth, requireAdmin, async (req, res) => {
 });
 
 // ---------- Ordre personnalise des elements du menu lateral ----------
-const DEFAULT_SIDEBAR_ORDER = ['reservations', 'caisse', 'auberges', 'extras', 'commission', 'admin', 'personnaliser'];
+const DEFAULT_SIDEBAR_ORDER = ['reservations', 'caisse', 'auberges', 'extras', 'commission', 'admin', 'personnaliser', 'roles'];
 
 app.get('/api/sidebar-order', auth, async (req, res) => {
   try {
@@ -1077,6 +1140,7 @@ app.get('*', (req, res) => {
 // ---------- Migration auto au demarrage : cree les tables manquantes ----------
 async function ensureTables() {
   try {
+    await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS permissions JSONB DEFAULT \'{}\'::jsonb;');
     await pool.query(`
       CREATE TABLE IF NOT EXISTS commission_entries (
         id SERIAL PRIMARY KEY,
@@ -1113,52 +1177,7 @@ async function ensureTables() {
   }
 }
 
-// ---------- Import unique de l'historique Excel (une seule fois, si la table est vide) ----------
-async function importCommissionHistory() {
-  try {
-    const { rows: flag } = await pool.query("SELECT value FROM app_settings WHERE key='commission_history_imported'");
-    if (flag[0] && flag[0].value === 'true') return; // deja fait une fois, pour de bon -> on ne reimporte jamais
-    const { rows: cnt } = await pool.query('SELECT COUNT(*)::int AS n FROM commission_entries');
-    if (cnt[0].n > 0) {
-      // Des donnees existent deja (creees avant l'ajout de ce marqueur) -> on considere l'import comme fait,
-      // sans jamais l'ecraser, et on pose le marqueur pour que ca ne se reproduise plus.
-      await pool.query("INSERT INTO app_settings (key, value) VALUES ('commission_history_imported','true') ON CONFLICT (key) DO UPDATE SET value='true'");
-      return;
-    }
-    const p = path.join(__dirname, 'db', 'commission_history_import.json');
-    if (!fs.existsSync(p)) return;
-    const data = JSON.parse(fs.readFileSync(p, 'utf-8'));
-
-    // L'Excel devient la source unique : on remet tous les soldes d'ouverture a 0
-    await pool.query('UPDATE auberges SET opening_balance=0');
-
-    let total = 0;
-    for (const [name, entries] of Object.entries(data)) {
-      let { rows: a } = await pool.query('SELECT id FROM auberges WHERE lower(trim(name))=lower(trim($1)) LIMIT 1', [name]);
-      let id = a[0] && a[0].id;
-      if (!id) {
-        const ins = await pool.query('INSERT INTO auberges (name, opening_balance) VALUES ($1,0) ON CONFLICT (name) DO NOTHING RETURNING id', [name]);
-        id = ins.rows[0] ? ins.rows[0].id : (await pool.query('SELECT id FROM auberges WHERE lower(trim(name))=lower(trim($1)) LIMIT 1', [name])).rows[0].id;
-      }
-      let pos = 0;
-      for (const e of entries) {
-        pos += 1; total += 1;
-        await pool.query(
-          `INSERT INTO commission_entries (auberge_id, date, pack, homme, femme, debit, credit, source, position)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,'import',$8)`,
-          [id, e.date || null, e.pack || '', e.homme || 0, e.femme || 0, e.debit || 0, e.credit || 0, pos]
-        );
-      }
-    }
-    await pool.query("INSERT INTO app_settings (key, value) VALUES ('commission_history_imported','true') ON CONFLICT (key) DO UPDATE SET value='true'");
-    console.log('Import historique commissions: ' + total + ' lignes.');
-  } catch (e) {
-    console.error('Erreur import historique commissions:', e.message);
-  }
-}
-
 app.listen(PORT, async () => {
   console.log(`Serveur demarre sur le port ${PORT}`);
   await ensureTables();
-  await importCommissionHistory();
 });

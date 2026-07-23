@@ -96,19 +96,23 @@ async function main() {
   }
 
   // Comptes de l'equipe (mots de passe par defaut, a changer via "Mon profil" apres la premiere connexion)
+  // Permissions de depart (a ajuster ensuite dans la section "Roles", reservee au patron) :
+  // - reservation/reception : juste le tableau de reservations (leur travail au quotidien)
+  // - gerante : acces large, pour suivre la performance du spa (chiffre d'affaires, commissions...)
+  // - papa : caisse (chiffre d'affaires) + statistiques des extras, sans les reservations au jour le jour
   const TEAM_ACCOUNTS = [
-    { username: 'nouhaila', password: 'spa2026', full_name: 'Bannany Nouhaila' },
-    { username: 'hanane.reception', password: 'spa2026', full_name: 'Izikki Hanane' },
-    { username: 'hanane.gerante', password: 'spa2026', full_name: 'El Bellaoui Hanane' },
-    { username: 'lahcen', password: 'spa2026', full_name: 'Lahcen Biyjeddiguen' },
+    { username: 'nouhaila', password: 'spa2026', full_name: 'Bannany Nouhaila', permissions: { reservations: true } },
+    { username: 'hanane.reception', password: 'spa2026', full_name: 'Izikki Hanane', permissions: { reservations: true } },
+    { username: 'hanane.gerante', password: 'spa2026', full_name: 'El Bellaoui Hanane', permissions: { reservations: true, caisse: true, commission: true, auberges: true, extras: true } },
+    { username: 'lahcen', password: 'spa2026', full_name: 'Lahcen Biyjeddiguen', permissions: { caisse: true, extras: true } },
   ];
   for (const acc of TEAM_ACCOUNTS) {
     const { rows: existingAcc } = await pool.query('SELECT id FROM users WHERE username=$1', [acc.username]);
     if (existingAcc.length === 0) {
       const hash = await bcrypt.hash(acc.password, 10);
       await pool.query(
-        'INSERT INTO users (username, password_hash, full_name, is_admin) VALUES ($1,$2,$3,false)',
-        [acc.username, hash, acc.full_name]
+        'INSERT INTO users (username, password_hash, full_name, is_admin, permissions) VALUES ($1,$2,$3,false,$4)',
+        [acc.username, hash, acc.full_name, JSON.stringify(acc.permissions)]
       );
       console.log(`Compte cree -> ${acc.full_name} : username "${acc.username}" / password "${acc.password}"`);
     } else {
@@ -123,23 +127,6 @@ async function main() {
   await pool.query("UPDATE rooms SET mixte_autorise=true WHERE section IN ('TANIRT','TAFOKT')");
   await pool.query("UPDATE rooms SET name='2 place home' WHERE section='HAMMAM' AND name ILIKE '%homme%'");
   await pool.query("UPDATE rooms SET name='2 place Feme' WHERE section='HAMMAM' AND name ILIKE '%femme%'");
-
-  console.log('Import des auberges depuis le fichier Excel (si pas deja presentes)...');
-  const importPath = path.join(__dirname, 'auberges_import.json');
-  if (fs.existsSync(importPath)) {
-    const auberges = JSON.parse(fs.readFileSync(importPath, 'utf-8'));
-    let added = 0;
-    for (const a of auberges) {
-      const { rowCount } = await pool.query(
-        'INSERT INTO auberges (name, opening_balance) VALUES ($1,$2) ON CONFLICT (name) DO NOTHING',
-        [a.name, a.opening_balance]
-      );
-      if (rowCount > 0) added++;
-    }
-    console.log(`${added} nouvelle(s) auberge(s) importee(s) (sur ${auberges.length} dans le fichier).`);
-  } else {
-    console.log('Aucun fichier auberges_import.json trouve, etape ignoree.');
-  }
 
   await pool.end();
   console.log('Termine.');

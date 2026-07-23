@@ -41,15 +41,22 @@
       <span>Tamraght Spa House</span>
     </div>
     <nav class="sidebar-nav">
-      <button class="sidebar-item active" data-view="reservations">📅 Reservations</button>
-      <button class="sidebar-item" data-view="caisse">💰 Caisse</button>
-      <button class="sidebar-item" data-view="auberges">🏨 Auberges</button>
-      <button class="sidebar-item" data-view="extras">👥 Extras</button>
-      <button class="sidebar-item" data-view="commission">📋 Commission</button>
+      <button id="navReservations" class="sidebar-item active" data-view="reservations">📅 Reservations</button>
+      <button id="navCaisse" class="sidebar-item" data-view="caisse">💰 Caisse</button>
+      <button id="navAuberges" class="sidebar-item" data-view="auberges">🏨 Auberges</button>
+      <button id="navExtras" class="sidebar-item" data-view="extras">👥 Extras</button>
+      <button id="navCommission" class="sidebar-item" data-view="commission">📋 Commission</button>
       <button id="navAdmin" class="sidebar-item hidden" data-view="admin">⚠️ Zone Admin</button>
       <button id="navPersonnaliser" class="sidebar-item hidden" data-view="personnaliser">🎛️ Personnaliser formulaire</button>
+      <button id="navRoles" class="sidebar-item hidden" data-view="roles">🔑 Roles</button>
     </nav>
   </aside>
+
+  <div id="viewRoles" style="display:none;padding:16px;">
+    <h2 style="margin-bottom:6px;color:#5a3823;">🔑 Roles de l'equipe</h2>
+    <p style="color:#6b7280;font-size:13px;margin-bottom:16px;">Choisis ce que chaque personne peut voir dans l'application.</p>
+    <div id="teamList" style="max-width:520px;"></div>
+  </div>
 
   <div id="viewReservations">
 
@@ -103,6 +110,14 @@
 
   <div id="viewCaisse" style="display:none;padding:16px;">
     <h2 style="margin-bottom:14px;color:#5a3823;">💰 Calcul de caisse</h2>
+
+    <div style="background:#f3e9d8;border-radius:12px;padding:14px;max-width:400px;margin-bottom:18px;">
+      <p style="font-size:12.5px;color:#7a6650;margin-bottom:8px;font-weight:700;">📊 Chiffre d'affaires du mois</p>
+      <input id="revenueMonthInput" type="month" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:8px;margin-bottom:8px;">
+      <p id="revenueMonthTotal" style="font-size:22px;font-weight:800;color:#166534;"></p>
+      <p id="revenueMonthCount" style="font-size:12px;color:#7a6650;"></p>
+    </div>
+
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;max-width:400px;">
       <button id="cashDayPrevBtn" class="nav-btn2">‹</button>
       <input id="cashDayDate" type="date" style="flex:1;padding:8px;border:1px solid #d1d5db;border-radius:8px;">
