@@ -944,23 +944,43 @@ function showLogin() {
   $('mainScreen').classList.add('hidden');
 }
 
-function showMain() {
-  $('loginScreen').classList.add('hidden');
-  $('mainScreen').classList.remove('hidden');
-  $('userLabel').textContent = currentUser.full_name;
+function applySidebarPermissions() {
   $('navAdmin').classList.toggle('hidden', !currentUser.is_admin);
   $('navPersonnaliser').classList.toggle('hidden', !currentUser.is_admin);
   $('navRoles').classList.toggle('hidden', !currentUser.is_admin);
   $('editHoursBtn').classList.toggle('hidden', !currentUser.is_admin);
   const perms = currentUser.permissions || {};
-  $('navReservations').classList.toggle('hidden', !perms.reservations);
-  $('navCaisse').classList.toggle('hidden', !perms.caisse);
-  $('navCommission').classList.toggle('hidden', !perms.commission);
-  $('navAuberges').classList.toggle('hidden', !perms.auberges);
-  $('navExtras').classList.toggle('hidden', !perms.extras);
+  const isAdmin = currentUser.is_admin;
+  // Le patron (admin) voit toujours tout, meme si "permissions" manque dans une session
+  // deja ouverte avant l'ajout de ce systeme (evite qu'un cache perime cache tout le menu).
+  $('navReservations').classList.toggle('hidden', !(isAdmin || perms.reservations));
+  $('navCaisse').classList.toggle('hidden', !(isAdmin || perms.caisse));
+  $('navCommission').classList.toggle('hidden', !(isAdmin || perms.commission));
+  $('navAuberges').classList.toggle('hidden', !(isAdmin || perms.auberges));
+  $('navExtras').classList.toggle('hidden', !(isAdmin || perms.extras));
+}
+
+async function refreshCurrentUser() {
+  try {
+    const res = await authFetch(`${API}/api/auth/me`);
+    if (!res.ok) return;
+    const fresh = await res.json();
+    currentUser = { ...currentUser, ...fresh };
+    localStorage.setItem('user', JSON.stringify(currentUser));
+    applySidebarPermissions();
+  } catch (e) { /* silencieux : on garde la session en cache si le serveur ne repond pas */ }
+}
+
+function showMain() {
+  $('loginScreen').classList.add('hidden');
+  $('mainScreen').classList.remove('hidden');
+  $('userLabel').textContent = currentUser.full_name;
+  applySidebarPermissions();
+  const perms = currentUser.permissions || {};
+  const isAdmin = currentUser.is_admin;
   // Ouvrir automatiquement la premiere section que cette personne peut voir
-  const firstAllowed = ['reservations', 'caisse', 'auberges', 'extras', 'commission'].find((k) => perms[k]);
-  if (firstAllowed && !perms.reservations) switchView(firstAllowed);
+  const firstAllowed = ['reservations', 'caisse', 'auberges', 'extras', 'commission'].find((k) => isAdmin || perms[k]);
+  if (firstAllowed && !(isAdmin || perms.reservations)) switchView(firstAllowed);
   renderCalendar();
   loadRoomsAndReservations();
   loadAuberges();
@@ -970,6 +990,7 @@ function showMain() {
   loadHoursRange();
   initSidebarDrag();
   connectLiveUpdates();
+  refreshCurrentUser();
   if (currentUser.is_admin) loadTeamRoles();
 }
 

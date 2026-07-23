@@ -158,6 +158,20 @@ app.post('/api/login', async (req, res) => {
 });
 
 // Modifier son propre profil (nom complet et/ou mot de passe)
+// Rafraichir les infos de la session (notamment les permissions, qui peuvent avoir change
+// depuis que la personne s'est connectee - evite de dependre d'un cache perime dans le navigateur)
+app.get('/api/auth/me', auth, async (req, res) => {
+  try {
+    const { rows } = await pool.query('SELECT * FROM users WHERE id=$1', [req.user.id]);
+    const user = rows[0];
+    if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });
+    res.json({ username: user.username, full_name: user.full_name, is_admin: user.is_admin, permissions: effectivePermissions(user) });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 app.put('/api/auth/me', auth, async (req, res) => {
   const { username, full_name, current_password, new_password } = req.body;
   try {
