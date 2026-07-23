@@ -148,6 +148,7 @@ function init() {
   updateHoursLabel();
   $('cancelCopyBtn').addEventListener('click', cancelCopy);
   $('includedAddBtn').addEventListener('click', confirmIncludedMassage);
+  $('includedSkipBtn').addEventListener('click', closeIncludedModalAndAdvance);
   $('splitCloseBtn').addEventListener('click', closeSplitModal);
   $('splitCancelBtn').addEventListener('click', closeSplitModal);
   $('splitConfirmBtn').addEventListener('click', confirmSplit);
@@ -358,7 +359,7 @@ async function doPaste(room, hour) {
     selectedHour = hour;
     $('modalTitle').textContent = room.section + ' - ' + room.name;
     $('modalSub').textContent = hour + 'h00';
-    $('resModal').classList.remove('hidden');
+    $('resModal').classList.add('show');
     showForm(savedRes);
   } catch (e) {
     alert('Erreur de connexion');
@@ -578,11 +579,11 @@ function openProfileModal() {
   $('fProfileConfirmPwd').value = '';
   $('profileErrMsg').textContent = '';
   $('profileOkMsg').textContent = '';
-  $('profileModal').classList.remove('hidden');
+  $('profileModal').classList.add('show');
 }
 
 function closeProfileModal() {
-  $('profileModal').classList.add('hidden');
+  $('profileModal').classList.remove('show');
 }
 
 async function saveProfile() {
@@ -865,6 +866,7 @@ function showMain() {
   $('userLabel').textContent = currentUser.full_name;
   $('navAdmin').classList.toggle('hidden', !currentUser.is_admin);
   $('navPersonnaliser').classList.toggle('hidden', !currentUser.is_admin);
+  $('sidebarOrderSaveWrap').classList.toggle('hidden', !currentUser.is_admin);
   renderCalendar();
   loadRoomsAndReservations();
   loadAuberges();
@@ -1169,7 +1171,7 @@ function openSlot(room, hour) {
     (room.capacity_flexible ? ' - capacite ' + room.capacity_base + '+ (extensible)' : ' - capacite max ' + room.capacity_base) +
     (room.sexe_restriction ? ' - reserve aux ' + room.sexe_restriction + 's' : '');
 
-  $('resModal').classList.remove('hidden');
+  $('resModal').classList.add('show');
 
   const list = findResList(room.id, hour);
   if (list.length === 0) {
@@ -1304,7 +1306,7 @@ $('fSansCommission').addEventListener('change', () => { recalcPrice(); updateLiv
 $('fPrix').addEventListener('input', updateLivePreview);
 
 function closeModal() {
-  $('resModal').classList.add('hidden');
+  $('resModal').classList.remove('show');
   $('resForm').classList.add('hidden');
   editingResId = null;
 }
@@ -1429,7 +1431,18 @@ async function renderIncludedRoomList(candidateRooms, hour, nb) {
   }
 }
 
+// File d'attente : si plusieurs personnes du meme groupe divise finissent en
+// Taziri/Royal en meme temps, on propose les massages/hammams inclus l'un apres l'autre.
+let includedOfferQueue = [];
+
 function offerIncludedSession(savedRes, packSvc, direction) {
+  includedOfferQueue.push({ savedRes, packSvc, direction });
+  if (includedOfferQueue.length === 1) {
+    openIncludedOffer(savedRes, packSvc, direction);
+  }
+}
+
+function openIncludedOffer(savedRes, packSvc, direction) {
   $('includedModal').dataset.direction = direction;
   $('includedModal').dataset.baseRes = JSON.stringify(savedRes);
   $('includedModal').dataset.packName = packSvc.name;
@@ -1452,7 +1465,16 @@ function offerIncludedSession(savedRes, packSvc, direction) {
     $('fIncludedMassage').classList.add('hidden');
     renderIncludedRoomList(hammamRooms, targetHour, savedRes.nb_personnes);
   }
-  $('includedModal').classList.remove('hidden');
+  $('includedModal').classList.add('show');
+}
+
+function closeIncludedModalAndAdvance() {
+  $('includedModal').classList.remove('show');
+  includedOfferQueue.shift();
+  if (includedOfferQueue.length > 0) {
+    const next = includedOfferQueue[0];
+    setTimeout(() => openIncludedOffer(next.savedRes, next.packSvc, next.direction), 200);
+  }
 }
 
 async function confirmIncludedMassage() {
@@ -1492,7 +1514,7 @@ async function confirmIncludedMassage() {
       alert(data.error || 'Impossible d\'ajouter la session incluse (creneau ou capacite indisponible).');
       return;
     }
-    $('includedModal').classList.add('hidden');
+    closeIncludedModalAndAdvance();
     await loadReservations();
     renderCalendar();
   } catch (e) {
@@ -1525,78 +1547,84 @@ function openSplitModal(res) {
   $('splitErrMsg').textContent = '';
   $('splitSub').textContent = `${res.nb_personnes} ${res.sexe || ''}(s) - ${res.client_type || ''}`;
   const names = splitNamesList(res);
-  $('fSplitName').innerHTML = names.map((n) => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
-  $('fSplitService').innerHTML = services.map((s) => `<option value="${s.id}">${s.name} (${s.category})</option>`).join('');
-  $('splitModal').classList.remove('hidden');
+  const optionsHtml = services.map((s) => `<option value="${s.id}" ${s.id === res.service_id ? 'selected' : ''}>${s.name} (${s.category}) - ${s.prix}dh</option>`).join('');
+  $('splitPersonRows').innerHTML = names.map((n) => `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+      <span style="flex:1;font-size:14px;font-weight:600;">${escapeHtml(n)}</span>
+      <select data-person-name="${escapeHtml(n)}" style="flex:2;margin:0;">${optionsHtml}</select>
+    </div>`).join('');
+  $('splitModal').classList.add('show');
 }
 
 function closeSplitModal() {
-  $('splitModal').classList.add('hidden');
+  $('splitModal').classList.remove('show');
   splitBaseRes = null;
+}
+
+// Meme formule que recalcPrice() (utilisee dans le formulaire normal), reutilisee ici
+// pour que chaque reservation issue d'une division ait le prix juste pour SON soin et SON nombre de personnes.
+function computeSplitPrice(svc, nb, auberge, sansCommission) {
+  if (!svc) return null;
+  let total = svc.prix * nb;
+  if (auberge && sansCommission) {
+    total -= nb * (nb >= 5 ? 100 : 50);
+  }
+  return Math.max(0, total);
 }
 
 async function confirmSplit() {
   const res = splitBaseRes;
-  const chosenName = $('fSplitName').value;
-  const newServiceId = parseInt($('fSplitService').value, 10);
   $('splitErrMsg').textContent = '';
+  const auberge = res.auberge; const sansCommission = res.sans_commission;
 
-  const remainingNb = (res.nb_personnes || 1) - 1;
-  const names = splitNamesList(res).filter((n) => n !== chosenName);
+  // Regrouper les personnes par soin choisi : celles qui gardent le meme soin
+  // restent ensemble dans une seule reservation (comme au depart).
+  const groups = new Map(); // serviceId -> [noms]
+  document.querySelectorAll('#splitPersonRows [data-person-name]').forEach((sel) => {
+    const name = sel.dataset.personName;
+    const serviceId = parseInt(sel.value, 10);
+    if (!groups.has(serviceId)) groups.set(serviceId, []);
+    groups.get(serviceId).push(name);
+  });
 
   try {
-    if (remainingNb <= 0) {
-      await authFetch(`${API}/api/reservations/${res.id}`, { method: 'DELETE' });
-    } else {
-      const updateRes = await authFetch(`${API}/api/reservations/${res.id}`, {
-        method: 'PUT',
+    await authFetch(`${API}/api/reservations/${res.id}`, { method: 'DELETE' });
+
+    const createdResults = [];
+    for (const [serviceId, names] of groups.entries()) {
+      const svc = services.find((s) => s.id === serviceId);
+      const nb = names.length;
+      const prix = computeSplitPrice(svc, nb, auberge, sansCommission);
+      const createRes = await authFetch(`${API}/api/reservations`, {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          room_id: res.room_id, service_id: res.service_id, date: res.date, hour: res.hour,
-          duration: res.duration || 1, client_type: names.join('+'), nb_personnes: remainingNb,
+          room_id: res.room_id, service_id: serviceId, date: res.date, hour: res.hour,
+          duration: 1, client_type: names.join('+'), nb_personnes: nb,
           sexe: res.sexe, origine: res.origine, auberge: res.auberge, sans_commission: res.sans_commission,
-          taxi: res.taxi, prix: res.prix, remise: res.remise, note: res.note, alerte: res.alerte,
-          staff_names: res.staff_names, carte_cadeaux: res.carte_cadeaux,
+          taxi: nb === (res.nb_personnes || 1) ? res.taxi : false, prix, note: '', staff_names: '', carte_cadeaux: false,
         }),
       });
-      if (!updateRes.ok) {
-        const d = await updateRes.json();
-        $('splitErrMsg').textContent = d.error || 'Erreur lors de la mise a jour du groupe.';
+      if (!createRes.ok) {
+        const d = await createRes.json();
+        $('splitErrMsg').textContent = d.error || `Erreur lors de la creation de la reservation pour ${names.join('+')}.`;
         return;
       }
+      const saved = await createRes.json().catch(() => null);
+      if (saved) createdResults.push({ saved, svc });
     }
-
-    const createRes = await authFetch(`${API}/api/reservations`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        room_id: res.room_id, service_id: newServiceId, date: res.date, hour: res.hour,
-        duration: 1, client_type: chosenName, nb_personnes: 1,
-        sexe: res.sexe, origine: res.origine, auberge: res.auberge, sans_commission: res.sans_commission,
-        taxi: false, prix: null, note: '', staff_names: '', carte_cadeaux: false,
-      }),
-    });
-    if (!createRes.ok) {
-      const d = await createRes.json();
-      $('splitErrMsg').textContent = d.error || 'Erreur lors de la creation de la nouvelle reservation.';
-      return;
-    }
-    const savedRes = await createRes.json().catch(() => null);
 
     closeSplitModal();
     await loadReservations();
     renderCalendar();
     renderSlotList();
 
-    const svc = savedRes ? services.find((s) => s.id === savedRes.service_id) : null;
-    if (svc && (svc.name === 'Taziri' || svc.name === 'Royal')) {
-      const room = rooms.find((r) => r.id === res.room_id);
-      if (room.section === 'HAMMAM') {
-        offerIncludedSession(savedRes, svc, 'massage');
-      } else {
-        offerIncludedSession(savedRes, svc, 'hammam');
+    const room = rooms.find((r) => r.id === res.room_id);
+    createdResults.forEach(({ saved, svc }) => {
+      if (svc && (svc.name === 'Taziri' || svc.name === 'Royal')) {
+        offerIncludedSession(saved, svc, room.section === 'HAMMAM' ? 'massage' : 'hammam');
       }
-    }
+    });
   } catch (e) {
     $('splitErrMsg').textContent = 'Erreur de connexion.';
   }
@@ -2423,14 +2451,29 @@ function applySidebarOrder(order) {
 }
 
 async function saveSidebarOrder() {
+  const msg = $('sidebarOrderMsg');
+  msg.style.color = '#e8dcc8';
+  msg.textContent = 'Enregistrement...';
   try {
-    await authFetch(`${API}/api/sidebar-order`, {
+    const res = await authFetch(`${API}/api/sidebar-order`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ order: sidebarOrder }),
     });
-  } catch (e) { /* silencieux : l'ordre reste correct a l'ecran meme si la sauvegarde echoue */ }
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      msg.style.color = '#fca5a5';
+      msg.textContent = data.error || 'Erreur lors de l\'enregistrement.';
+      return;
+    }
+    msg.style.color = '#86efac';
+    msg.textContent = 'Ordre du menu enregistre.';
+  } catch (e) {
+    msg.style.color = '#fca5a5';
+    msg.textContent = 'Erreur de connexion.';
+  }
 }
+$('saveSidebarOrderBtn').addEventListener('click', saveSidebarOrder);
 
 function initSidebarDrag() {
   if (!currentUser || !currentUser.is_admin) return; // seul le patron peut reorganiser le menu
@@ -2505,7 +2548,7 @@ function finishSidebarDrag(btn) {
   btn.classList.remove('sidebar-dragging');
   if (dragGhostEl) { dragGhostEl.remove(); dragGhostEl = null; }
   sidebarOrder = Array.from(document.querySelectorAll('.sidebar-item')).map((el) => el.dataset.view);
-  saveSidebarOrder();
+  $('sidebarOrderMsg').textContent = '';
 }
 
 init();
