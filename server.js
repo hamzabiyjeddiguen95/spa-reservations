@@ -52,10 +52,11 @@ function requireAdmin(req, res, next) {
 }
 
 // ---------- Mises a jour en direct (comme Google Sheets) ----------
-// Chaque appareil connecte garde une connexion ouverte. Des qu'une reservation
-// est creee/modifiee/supprimee/deplacee par n'importe qui, tous les autres
-// appareils connectes sur le meme jour se rafraichissent tout seuls.
-let sseClients = [];
+// Chaque appareil connecte garde une connexion ouverte, associee a la personne
+// connectee. Des qu'une reservation change, ou que quelqu'un bouge sa souris/son
+// doigt sur le tableau, tous les autres appareils connectes sont prevenus en direct.
+let sseClients = []; // [{ res, userId, name, color }]
+const CURSOR_COLORS = ['#e11d48', '#2563eb', '#059669', '#d97706', '#7c3aed', '#0891b2', '#db2777'];
 
 function toDateStr(d) {
   if (!d) return d;
@@ -65,12 +66,20 @@ function toDateStr(d) {
   return d.toISOString().slice(0, 10);
 }
 
-function broadcastChange(payload) {
-  const clean = { ...payload, date: toDateStr(payload.date) };
+function broadcastChange(payload, excludeUserId) {
+  const clean = payload.date !== undefined ? { ...payload, date: toDateStr(payload.date) } : payload;
   const data = `data: ${JSON.stringify(clean)}\n\n`;
   sseClients.forEach((client) => {
-    try { client.write(data); } catch (e) { /* client deconnecte, sera nettoye au prochain close */ }
+    if (excludeUserId && client.userId === excludeUserId) return; // pas la peine de se renvoyer son propre curseur
+    try { client.res.write(data); } catch (e) { /* client deconnecte, sera nettoye au prochain close */ }
   });
+}
+
+function currentPresenceList() {
+  // Une seule entree par personne meme si elle a plusieurs onglets/appareils ouverts
+  const seen = new Map();
+  sseClients.forEach((c) => { if (!seen.has(c.userId)) seen.set(c.userId, { userId: c.userId, name: c.name, color: c.color }); });
+  return [...seen.values()];
 }
 
 app.get('/api/events', auth, (req, res) => {
@@ -81,16 +90,33 @@ app.get('/api/events', auth, (req, res) => {
     'X-Accel-Buffering': 'no',
   });
   res.write(': connecte\n\n');
-  sseClients.push(res);
+  const color = CURSOR_COLORS[req.user.id % CURSOR_COLORS.length];
+  const client = { res, userId: req.user.id, name: req.user.full_name, color };
+  sseClients.push(client);
+  // Prevenir tout le monde (y compris ce nouvel appareil, via la liste initiale) qui est en ligne desormais
+  broadcastChange({ type: 'presence', users: currentPresenceList() });
   req.on('close', () => {
-    sseClients = sseClients.filter((c) => c !== res);
+    sseClients = sseClients.filter((c) => c !== client);
+    broadcastChange({ type: 'presence', users: currentPresenceList() });
   });
+});
+
+// Position du curseur/doigt d'une personne sur le tableau, relayee en direct aux autres.
+// Ne touche jamais la base de donnees : c'est ephemere, juste pour l'affichage.
+app.post('/api/cursor', auth, (req, res) => {
+  const { date, xPct, yPct } = req.body;
+  broadcastChange({
+    type: 'cursor', userId: req.user.id, name: req.user.full_name,
+    color: CURSOR_COLORS[req.user.id % CURSOR_COLORS.length],
+    date, xPct, yPct,
+  }, req.user.id);
+  res.json({ ok: true });
 });
 
 // Ping regulier pour eviter qu'un proxy/load-balancer ne ferme la connexion inactive
 setInterval(() => {
   sseClients.forEach((client) => {
-    try { client.write(': ping\n\n'); } catch (e) { /* ignore */ }
+    try { client.res.write(': ping\n\n'); } catch (e) { /* ignore */ }
   });
 }, 25000);
 

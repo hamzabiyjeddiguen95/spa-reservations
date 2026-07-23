@@ -48,13 +48,18 @@ Ton code est maintenant sur GitHub.
 
 ## Etape 5 - Ajouter les comptes du staff
 
-Pour chaque employe qui doit avoir son propre login, on utilise la route
-`/api/users` protegee par une cle secrete (`ADMIN_KEY`, visible dans
-Render -> ton service -> Environment).
+Les comptes de l'equipe sont deja prets dans le script de demarrage (Bannany
+Nouhaila, Izikki Hanane, El Bellaoui Hanane, Lahcen Biyjeddiguen). Pour les
+creer, retourne dans l'onglet **Shell** (comme a l'etape 4) et retape :
+```
+npm run seed
+```
+Ca ne touche a rien d'existant (reservations, commissions, etc.) - ca ajoute
+juste les nouveaux comptes qui manquent encore. Les identifiants de chacun
+s'affichent dans le Shell apres la commande.
 
-Le plus simple : donne-moi les noms du staff et je te prepare une page
-simple ("Ajouter un employe") pour le faire directement depuis ton
-telephone sans avoir a taper de commandes.
+Si tu ajoutes d'autres personnes plus tard, donne-moi juste les noms et je
+les ajoute au script de la meme facon.
 
 ## Etape 6 - Utiliser l'application
 

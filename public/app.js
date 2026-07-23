@@ -225,6 +225,9 @@ function init() {
   $('grid').addEventListener('contextmenu', (e) => {
     if (e.target.closest('.res-cell')) e.preventDefault();
   });
+  // Curseur en direct pour l'equipe : chaque mouvement de souris/doigt sur le tableau
+  // est relaye aux autres personnes connectees (voir connectLiveUpdates).
+  $('gridWrapper').addEventListener('pointermove', (e) => sendCursorPosition(e.clientX, e.clientY));
 }
 
 // ---------- Deplacement par glisser-deposer fluide ----------
@@ -421,8 +424,14 @@ function renderCalendar() {
   $('dateDisplay').innerHTML = label + (hasResToday ? '<span class="date-res-dot"></span>' : '');
 }
 
+function clearRemoteCursors() {
+  Object.values(remoteCursorEls).forEach((el) => el.remove());
+  remoteCursorEls = {};
+}
+
 function selectDate(ds) {
   currentDate = ds;
+  clearRemoteCursors();
   renderCalendar();
   loadReservations();
 }
@@ -431,12 +440,14 @@ function shiftCalendar(days) {
   const d = new Date(currentDate + 'T00:00:00');
   d.setDate(d.getDate() + days);
   currentDate = fmtDate(d);
+  clearRemoteCursors();
   renderCalendar();
   loadReservations();
 }
 
 function goToday() {
   currentDate = todayStr();
+  clearRemoteCursors();
   renderCalendar();
   loadReservations();
 }
@@ -1052,12 +1063,72 @@ function connectLiveUpdates() {
       if (payload.type === 'reservations' && payload.date === currentDate) {
         loadReservations();
         renderCalendar();
+      } else if (payload.type === 'presence') {
+        updatePresence(payload.users);
+      } else if (payload.type === 'cursor') {
+        updateRemoteCursor(payload);
       }
     } catch (err) { /* message non-JSON (ping), ignore */ }
   };
   liveEventSource.onerror = () => {
     // Le navigateur relance automatiquement la connexion EventSource ; rien a faire ici.
   };
+}
+
+// ---------- Presence (qui est connecte) et curseur en direct de chaque personne ----------
+let remoteCursorEls = {}; // userId -> element DOM
+
+function updatePresence(users) {
+  const others = users.filter((u) => !currentUser || u.userId !== currentUser.id);
+  const el = $('presenceIndicator');
+  if (others.length === 0) {
+    el.textContent = '';
+  } else {
+    el.textContent = `👥 ${others.map((u) => u.name.split(' ')[0]).join(', ')}`;
+  }
+  // Retirer le curseur de toute personne qui n'est plus connectee
+  const stillHere = new Set(users.map((u) => u.userId));
+  Object.keys(remoteCursorEls).forEach((uid) => {
+    if (!stillHere.has(parseInt(uid, 10))) {
+      remoteCursorEls[uid].remove();
+      delete remoteCursorEls[uid];
+    }
+  });
+}
+
+function updateRemoteCursor(payload) {
+  if (payload.date !== currentDate) return; // pas le meme jour affiche, pas pertinent ici
+  const gridEl = $('grid');
+  if (!gridEl) return;
+  let el = remoteCursorEls[payload.userId];
+  if (!el) {
+    el = document.createElement('div');
+    el.className = 'remote-cursor';
+    el.innerHTML = `<div class="remote-cursor-dot" style="background:${payload.color};"></div><div class="remote-cursor-label" style="background:${payload.color};">${escapeHtml(payload.name.split(' ')[0])}</div>`;
+    gridEl.appendChild(el);
+    remoteCursorEls[payload.userId] = el;
+  }
+  el.style.left = `${payload.xPct}%`;
+  el.style.top = `${payload.yPct}%`;
+}
+
+let lastCursorSend = 0;
+function sendCursorPosition(clientX, clientY) {
+  const now = performance.now();
+  if (now - lastCursorSend < 120) return; // pas plus de ~8 fois par seconde
+  lastCursorSend = now;
+  const gridEl = $('grid');
+  if (!gridEl) return;
+  const rect = gridEl.getBoundingClientRect();
+  if (rect.width === 0 || rect.height === 0) return;
+  const xPct = ((clientX - rect.left) / rect.width) * 100;
+  const yPct = ((clientY - rect.top) / rect.height) * 100;
+  if (xPct < 0 || xPct > 100 || yPct < 0 || yPct > 100) return; // hors du tableau, pas la peine
+  authFetch(`${API}/api/cursor`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ date: currentDate, xPct: xPct.toFixed(2), yPct: yPct.toFixed(2) }),
+  }).catch(() => { /* silencieux : la position du curseur n'est pas critique */ });
 }
 
 // Une reservation "incluse" (massage ou hammam offert dans un pack Taziri/Royal)

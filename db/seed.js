@@ -95,6 +95,28 @@ async function main() {
     console.log('Compte admin deja present.');
   }
 
+  // Comptes de l'equipe (mots de passe par defaut, a changer via "Mon profil" apres la premiere connexion)
+  const TEAM_ACCOUNTS = [
+    { username: 'nouhaila', password: 'spa2026', full_name: 'Bannany Nouhaila' },
+    { username: 'hanane.reception', password: 'spa2026', full_name: 'Izikki Hanane' },
+    { username: 'hanane.gerante', password: 'spa2026', full_name: 'El Bellaoui Hanane' },
+    { username: 'lahcen', password: 'spa2026', full_name: 'Lahcen Biyjeddiguen' },
+  ];
+  for (const acc of TEAM_ACCOUNTS) {
+    const { rows: existingAcc } = await pool.query('SELECT id FROM users WHERE username=$1', [acc.username]);
+    if (existingAcc.length === 0) {
+      const hash = await bcrypt.hash(acc.password, 10);
+      await pool.query(
+        'INSERT INTO users (username, password_hash, full_name, is_admin) VALUES ($1,$2,$3,false)',
+        [acc.username, hash, acc.full_name]
+      );
+      console.log(`Compte cree -> ${acc.full_name} : username "${acc.username}" / password "${acc.password}"`);
+    } else {
+      console.log(`Compte "${acc.username}" (${acc.full_name}) deja present, rien change.`);
+    }
+  }
+  console.log('IMPORTANT: chaque personne devrait changer son mot de passe via "Mon profil" apres sa premiere connexion.');
+
   console.log('Mise a jour des noms TANIRT/TAFOKT (si besoin)...');
   await pool.query("UPDATE rooms SET name='4 place mixte' WHERE section='TANIRT'");
   await pool.query("UPDATE rooms SET name='5 place mixte' WHERE section='TAFOKT'");

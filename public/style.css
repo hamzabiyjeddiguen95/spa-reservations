@@ -96,8 +96,10 @@ body {
 .topbar-logo { height: 28px; width: auto; flex: none; }
 .hamburger-btn { background:rgba(255,255,255,0.15); color:#f0e6d2; border:none; width:36px; height:36px; border-radius:8px; font-size:16px; cursor:pointer; flex:none; }
 .day-count-badge { font-size:11px; color:#e8d5bf; white-space:nowrap; margin-left:8px; flex-shrink:0; }
+.presence-indicator { font-size:11px; color:#e8dcc8; margin-left:8px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:140px; flex-shrink:1; min-width:0; }
 @media (max-width: 480px) {
   .day-count-badge { display: none; }
+  .presence-indicator { max-width: 70px; }
 }
 
 .sidebar-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:399; opacity:0; pointer-events:none; transition:opacity .25s ease; }
@@ -153,6 +155,34 @@ body {
 .grid {
   display: grid;
   min-width: max-content;
+  position: relative;
+}
+.remote-cursor {
+  position: absolute;
+  z-index: 60;
+  pointer-events: none;
+  transform: translate(-4px, -4px);
+  transition: left 0.12s linear, top 0.12s linear;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.remote-cursor-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.35);
+}
+.remote-cursor-label {
+  margin-top: 2px;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 6px;
+  white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.25);
 }
 .grid-row {
   display: grid;
