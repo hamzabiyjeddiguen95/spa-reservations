@@ -48,10 +48,6 @@
       <button id="navAdmin" class="sidebar-item hidden" data-view="admin">⚠️ Zone Admin</button>
       <button id="navPersonnaliser" class="sidebar-item hidden" data-view="personnaliser">🎛️ Personnaliser formulaire</button>
     </nav>
-    <div id="sidebarOrderSaveWrap" class="hidden" style="padding:12px 16px;">
-      <button id="saveSidebarOrderBtn" class="btn-secondary" style="width:100%;">Enregistrer l'ordre</button>
-      <p id="sidebarOrderMsg" style="font-size:12px;color:#e8dcc8;margin-top:6px;text-align:center;"></p>
-    </div>
   </aside>
 
   <div id="viewReservations">
@@ -88,11 +84,20 @@
     <div id="grid" class="grid"></div>
   </div>
 
-  <div style="display:flex;justify-content:center;align-items:center;gap:10px;padding:12px;">
-    <button id="removeHourBtn" class="nav-btn" title="Retirer une heure">-1h</button>
-    <span id="hoursRangeLabel" style="font-size:13px;color:#6b7280;"></span>
-    <button id="addHourBtn" class="nav-btn" title="Ajouter une heure">+1h</button>
+  <div style="display:flex;justify-content:center;align-items:center;gap:8px;padding:12px;flex-wrap:wrap;">
+    <span id="hoursRangeLabel" style="font-size:13px;color:#6b7280;cursor:pointer;text-decoration:underline dotted;"></span>
+    <button id="editHoursBtn" class="hidden" style="background:#efe7d9;color:#5a3823;border:none;padding:6px 10px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">✏️ Modifier</button>
+    <div id="editHoursForm" class="hidden" style="display:flex;align-items:center;gap:6px;">
+      <span style="font-size:12.5px;color:#6b7280;">De</span>
+      <input id="fHoursMin" type="number" min="0" max="23" style="width:52px;padding:6px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;">
+      <span style="font-size:12.5px;color:#6b7280;">h a</span>
+      <input id="fHoursMax" type="number" min="0" max="23" style="width:52px;padding:6px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;">
+      <span style="font-size:12.5px;color:#6b7280;">h</span>
+      <button id="saveHoursBtn" style="background:#5a3823;color:#f4e9d8;border:none;padding:6px 10px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">OK</button>
+      <button id="cancelHoursBtn" style="background:#f3f4f6;color:#374151;border:none;padding:6px 10px;border-radius:8px;font-size:12px;cursor:pointer;">Annuler</button>
+    </div>
   </div>
+  <p id="hoursErrMsg" style="text-align:center;font-size:12px;color:#dc2626;margin-top:-6px;margin-bottom:6px;"></p>
   </div>
 
   <div id="viewCaisse" style="display:none;padding:16px;">
@@ -268,6 +273,41 @@
   </div>
 </div>
 
+<!-- ============ MODAL AJOUTER UN GROUPE (personnes mixtes en une fois) ============ -->
+<div id="groupModal" class="modal">
+  <div class="modal-content">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+      <h2>Ajouter un groupe</h2>
+      <button id="groupCloseBtn" style="background:none;border:none;font-size:20px;color:#6b7280;">&times;</button>
+    </div>
+    <p style="font-size:12.5px;color:#6b7280;margin-bottom:10px;">Ajoute chaque personne avec son sexe et son soin. Les personnes avec le meme sexe + le meme soin sont groupees ensemble automatiquement.</p>
+
+    <div id="groupPersonRows" style="margin-bottom:8px;"></div>
+    <button id="addGroupRowBtn" class="btn-secondary" style="width:100%;margin-bottom:14px;">+ Ajouter une personne</button>
+
+    <input id="fGroupClient" type="text" placeholder="Nom du client (ex: Sanae, Amir et Alae)">
+    <label style="display:block;font-size:13px;color:#6b7280;margin-bottom:6px;">Est-ce que le client est etranger ou arabe ?</label>
+    <select id="fGroupOrigine">
+      <option value="etranger">Etranger</option>
+      <option value="arabe">Arabe</option>
+    </select>
+    <input id="fGroupAuberge" type="text" list="aubergesDatalist" placeholder="Auberge (si le client vient d'une auberge)">
+    <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:14px;">
+      <input id="fGroupSansCommission" type="checkbox" style="width:auto;margin:0;"> Sans commission (auberge a deja regle)
+    </label>
+    <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:14px;">
+      <input id="fGroupTaxi" type="checkbox" style="width:auto;margin:0;"> Taxi envoye pour ce client
+    </label>
+    <textarea id="fGroupNote" placeholder="Note (visible dans le tableau)"></textarea>
+
+    <div id="groupErrMsg" style="color:#dc2626;font-size:13px;margin-bottom:10px;"></div>
+    <div class="modal-actions">
+      <button id="groupConfirmBtn" class="btn-primary">Enregistrer le groupe</button>
+      <button id="groupCancelBtn" class="btn-secondary">Annuler</button>
+    </div>
+  </div>
+</div>
+
 <!-- ============ MODAL MON PROFIL ============ -->
 <div id="profileModal" class="modal">
   <div class="modal-content">
@@ -303,10 +343,14 @@
     </div>
     <p id="modalSub" style="color:#6b7280;font-size:13px;margin-bottom:10px;"></p>
     <div id="slotList"></div>
-    <button id="addNewBtn" class="btn-secondary" style="margin-bottom:10px;">+ Ajouter un client</button>
+    <div style="display:flex;gap:8px;margin-bottom:10px;">
+      <button id="addNewBtn" class="btn-secondary" style="flex:1;margin:0;">+ Ajouter un client</button>
+      <button id="addGroupBtn" class="btn-secondary" style="flex:1;margin:0;">+ Ajouter un groupe</button>
+    </div>
 
     <div id="resForm" class="hidden">
     <div id="livePreview" style="background:#f9fafb;border-radius:10px;padding:10px;margin-bottom:12px;font-size:14px;min-height:20px;"></div>
+    <button id="switchToGroupBtn" style="display:block;width:100%;background:#fef3c7;color:#92400e;border:none;padding:8px;border-radius:8px;font-size:12.5px;font-weight:700;cursor:pointer;margin-bottom:12px;">🔀 Plusieurs personnes avec des soins differents ?</button>
     <div id="formFieldsContainer">
     <div class="form-block" data-block="service">
       <select id="fService">
@@ -324,6 +368,8 @@
         <button type="button" class="chip" data-nb="1" data-sexe="femme">1 Femme</button>
         <button type="button" class="chip" data-nb="2" data-sexe="femme">2 Femmes</button>
         <button type="button" class="chip" data-nb="3" data-sexe="femme">3 Femmes</button>
+        <button type="button" class="chip" data-nb="1" data-sexe="garcon">1 Garcon</button>
+        <button type="button" class="chip" data-nb="1" data-sexe="fille">1 Fille</button>
       </div>
     </div>
     <div class="form-block" data-block="nbSexe">
@@ -333,6 +379,8 @@
           <option value="">Sexe</option>
           <option value="homme">Homme</option>
           <option value="femme">Femme</option>
+          <option value="garcon">Garcon</option>
+          <option value="fille">Fille</option>
         </select>
       </div>
       <input id="fDuration" type="number" min="1" value="1" placeholder="Duree (h)" style="display:none;">

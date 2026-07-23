@@ -24,9 +24,17 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ---------- Auth middleware ----------
+// Garcon/fille (enfants) ne comptent jamais dans la regle de non-mixite : un garcon peut
+// etre dans la meme chambre que des femmes, une fille avec des hommes, etc. Seul le
+// melange homme/femme (adultes) reste interdit dans une chambre non-mixte.
+const ADULT_SEXES = ['homme', 'femme'];
+function isAdultMixteConflict(sexeA, sexeB) {
+  return ADULT_SEXES.includes(sexeA) && ADULT_SEXES.includes(sexeB) && sexeA !== sexeB;
+}
+
 function auth(req, res, next) {
   const header = req.headers.authorization || '';
-  const token = header.startsWith('Bearer ') ? header.slice(7) : null;
+  const token = (header.startsWith('Bearer ') ? header.slice(7) : null) || req.query.token || null;
   if (!token) return res.status(401).json({ error: 'Non authentifie' });
   try {
     req.user = jwt.verify(token, JWT_SECRET);
@@ -42,6 +50,49 @@ function requireAdmin(req, res, next) {
   }
   next();
 }
+
+// ---------- Mises a jour en direct (comme Google Sheets) ----------
+// Chaque appareil connecte garde une connexion ouverte. Des qu'une reservation
+// est creee/modifiee/supprimee/deplacee par n'importe qui, tous les autres
+// appareils connectes sur le meme jour se rafraichissent tout seuls.
+let sseClients = [];
+
+function toDateStr(d) {
+  if (!d) return d;
+  if (typeof d === 'string') return d.slice(0, 10);
+  // objet Date renvoye par certains formats de colonne : on prend l'annee/mois/jour en UTC
+  // pour eviter tout decalage de fuseau horaire.
+  return d.toISOString().slice(0, 10);
+}
+
+function broadcastChange(payload) {
+  const clean = { ...payload, date: toDateStr(payload.date) };
+  const data = `data: ${JSON.stringify(clean)}\n\n`;
+  sseClients.forEach((client) => {
+    try { client.write(data); } catch (e) { /* client deconnecte, sera nettoye au prochain close */ }
+  });
+}
+
+app.get('/api/events', auth, (req, res) => {
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'X-Accel-Buffering': 'no',
+  });
+  res.write(': connecte\n\n');
+  sseClients.push(res);
+  req.on('close', () => {
+    sseClients = sseClients.filter((c) => c !== res);
+  });
+});
+
+// Ping regulier pour eviter qu'un proxy/load-balancer ne ferme la connexion inactive
+setInterval(() => {
+  sseClients.forEach((client) => {
+    try { client.write(': ping\n\n'); } catch (e) { /* ignore */ }
+  });
+}, 25000);
 
 // ---------- Routes: Auth ----------
 app.post('/api/login', async (req, res) => {
@@ -236,10 +287,11 @@ app.post('/api/reservations', auth, async (req, res) => {
       [room_id, date, hour]
     );
 
-    // Regle 1 : non-mixite - un creneau ne peut pas melanger homme et femme (sauf si la chambre autorise le mixte)
+    // Regle 1 : non-mixite - un creneau ne peut pas melanger homme et femme adultes
+    // (sauf si la chambre autorise le mixte). Garcon/fille ne declenchent jamais ce blocage.
     const existingSexes = new Set(existing.map((r) => r.sexe).filter(Boolean));
-    if (!room.mixte_autorise && sexe && existingSexes.size > 0 && !existingSexes.has(sexe)) {
-      return res.status(409).json({ error: `Ce creneau est deja reserve pour des ${[...existingSexes][0]}(s). Le spa ne mixe pas homme/femme dans la meme chambre.` });
+    if (!room.mixte_autorise && sexe && [...existingSexes].some((es) => isAdultMixteConflict(sexe, es))) {
+      return res.status(409).json({ error: `Ce creneau est deja reserve pour des ${[...existingSexes].find((es) => isAdultMixteConflict(sexe, es))}(s). Le spa ne mixe pas homme/femme dans la meme chambre.` });
     }
     if (room.sexe_restriction && sexe && sexe !== room.sexe_restriction) {
       return res.status(409).json({ error: `Cette chambre est reservee aux ${room.sexe_restriction}s.` });
@@ -262,6 +314,7 @@ app.post('/api/reservations', auth, async (req, res) => {
       [room_id, service_id || null, date, hour, duration || 1, client_type, nb, sexe, origine, auberge || null, !!sans_commission, remise || 0, !!alerte, !!taxi, prix, note, staff_names, !!carte_cadeaux, !!reclamation, req.user.id]
     );
     await syncReservationCommission(rows[0]);
+    broadcastChange({ type: 'reservations', date: rows[0].date });
     res.json(rows[0]);
   } catch (e) {
     console.error(e);
@@ -297,8 +350,8 @@ app.put('/api/reservations/:id', auth, async (req, res) => {
 
       const sexeToCheck = sexe !== undefined ? sexe : current.sexe;
       const existingSexes = new Set(existing.map((r) => r.sexe).filter(Boolean));
-      if (!room.mixte_autorise && sexeToCheck && existingSexes.size > 0 && !existingSexes.has(sexeToCheck)) {
-        return res.status(409).json({ error: `Cette case est deja reservee pour des ${[...existingSexes][0]}(s). Le spa ne mixe pas homme/femme.` });
+      if (!room.mixte_autorise && sexeToCheck && [...existingSexes].some((es) => isAdultMixteConflict(sexeToCheck, es))) {
+        return res.status(409).json({ error: `Cette case est deja reservee pour des ${[...existingSexes].find((es) => isAdultMixteConflict(sexeToCheck, es))}(s). Le spa ne mixe pas homme/femme.` });
       }
       if (room.sexe_restriction && sexeToCheck && sexeToCheck !== room.sexe_restriction) {
         return res.status(409).json({ error: `Cette chambre est reservee aux ${room.sexe_restriction}s.` });
@@ -338,6 +391,8 @@ app.put('/api/reservations/:id', auth, async (req, res) => {
     );
     if (!rows[0]) return res.status(404).json({ error: 'Reservation introuvable' });
     await syncReservationCommission(rows[0]);
+    broadcastChange({ type: 'reservations', date: rows[0].date });
+    if (current.date !== rows[0].date) broadcastChange({ type: 'reservations', date: current.date });
     res.json(rows[0]);
   } catch (e) {
     console.error(e);
@@ -347,8 +402,10 @@ app.put('/api/reservations/:id', auth, async (req, res) => {
 
 app.delete('/api/reservations/:id', auth, async (req, res) => {
   const { id } = req.params;
+  const { rows: existingRows } = await pool.query('SELECT date FROM reservations WHERE id=$1', [id]);
   await pool.query('DELETE FROM commission_entries WHERE reservation_id=$1', [id]);
   await pool.query('DELETE FROM reservations WHERE id=$1', [id]);
+  if (existingRows[0]) broadcastChange({ type: 'reservations', date: existingRows[0].date });
   res.json({ ok: true });
 });
 
@@ -679,6 +736,37 @@ app.put('/api/sidebar-order', auth, requireAdmin, async (req, res) => {
     await pool.query(
       "INSERT INTO app_settings (key, value) VALUES ('sidebar_order',$1) ON CONFLICT (key) DO UPDATE SET value=$1",
       [JSON.stringify(order)]
+    );
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// ---------- Plage horaire du tableau de reservations (ex: 9h-16h pendant Ramadan) ----------
+app.get('/api/hours-range', auth, async (req, res) => {
+  try {
+    const { rows } = await pool.query("SELECT value FROM app_settings WHERE key='hours_range'");
+    const saved = rows[0] ? JSON.parse(rows[0].value) : null;
+    if (saved && Number.isInteger(saved.min) && Number.isInteger(saved.max) && saved.min < saved.max) {
+      return res.json(saved);
+    }
+    res.json({ min: 10, max: 18 });
+  } catch (e) {
+    res.json({ min: 10, max: 18 });
+  }
+});
+
+app.put('/api/hours-range', auth, requireAdmin, async (req, res) => {
+  const { min, max } = req.body;
+  if (!Number.isInteger(min) || !Number.isInteger(max) || min < 0 || max > 23 || min >= max) {
+    return res.status(400).json({ error: 'Heures invalides (debut < fin, entre 0 et 23).' });
+  }
+  try {
+    await pool.query(
+      "INSERT INTO app_settings (key, value) VALUES ('hours_range',$1) ON CONFLICT (key) DO UPDATE SET value=$1",
+      [JSON.stringify({ min, max })]
     );
     res.json({ ok: true });
   } catch (e) {

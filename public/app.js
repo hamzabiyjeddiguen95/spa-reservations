@@ -1,12 +1,74 @@
 const API = ''; // meme domaine (le backend sert aussi le frontend)
+let hoursMin = parseInt(localStorage.getItem('hoursMin') || '10', 10);
 let hoursMax = parseInt(localStorage.getItem('hoursMax') || '18', 10);
 function getHours() {
   const arr = [];
-  for (let h = 10; h <= hoursMax; h++) arr.push(h);
+  for (let h = hoursMin; h <= hoursMax; h++) arr.push(h);
   return arr;
 }
 function updateHoursLabel() {
-  $('hoursRangeLabel').textContent = `10h - ${hoursMax}h`;
+  $('hoursRangeLabel').textContent = `${hoursMin}h - ${hoursMax}h`;
+}
+
+async function loadHoursRange() {
+  try {
+    const res = await authFetch(`${API}/api/hours-range`);
+    const data = await res.json();
+    if (data && Number.isInteger(data.min) && Number.isInteger(data.max) && data.min < data.max) {
+      hoursMin = data.min;
+      hoursMax = data.max;
+      localStorage.setItem('hoursMin', hoursMin);
+      localStorage.setItem('hoursMax', hoursMax);
+    }
+  } catch (e) { /* on garde la valeur locale/par defaut si le serveur ne repond pas */ }
+  updateHoursLabel();
+  renderGrid();
+}
+
+function openEditHours() {
+  $('fHoursMin').value = hoursMin;
+  $('fHoursMax').value = hoursMax;
+  $('hoursErrMsg').textContent = '';
+  $('editHoursForm').classList.remove('hidden');
+  $('hoursRangeLabel').classList.add('hidden');
+  $('editHoursBtn').classList.add('hidden');
+}
+
+function closeEditHours() {
+  $('editHoursForm').classList.add('hidden');
+  $('hoursRangeLabel').classList.remove('hidden');
+  if (currentUser && currentUser.is_admin) $('editHoursBtn').classList.remove('hidden');
+}
+
+async function saveHoursRange() {
+  const min = parseInt($('fHoursMin').value, 10);
+  const max = parseInt($('fHoursMax').value, 10);
+  const msg = $('hoursErrMsg');
+  if (Number.isNaN(min) || Number.isNaN(max) || min < 0 || max > 23 || min >= max) {
+    msg.textContent = 'Heures invalides (debut < fin, entre 0 et 23).';
+    return;
+  }
+  try {
+    const res = await authFetch(`${API}/api/hours-range`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ min, max }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      msg.textContent = data.error || 'Erreur lors de l\'enregistrement.';
+      return;
+    }
+    hoursMin = min;
+    hoursMax = max;
+    localStorage.setItem('hoursMin', hoursMin);
+    localStorage.setItem('hoursMax', hoursMax);
+    updateHoursLabel();
+    renderGrid();
+    closeEditHours();
+  } catch (e) {
+    msg.textContent = 'Erreur de connexion.';
+  }
 }
 
 let token = localStorage.getItem('token') || null;
@@ -125,26 +187,10 @@ function init() {
     else popupViewDate.setFullYear(popupViewDate.getFullYear() + 1);
     renderCalPopup();
   });
-  $('addHourBtn').addEventListener('click', () => {
-    if (hoursMax < 21) {
-      hoursMax += 1;
-      localStorage.setItem('hoursMax', hoursMax);
-      updateHoursLabel();
-      renderGrid();
-    } else {
-      alert('Heure maximum atteinte (21h).');
-    }
-  });
-  $('removeHourBtn').addEventListener('click', () => {
-    if (hoursMax > 18) {
-      hoursMax -= 1;
-      localStorage.setItem('hoursMax', hoursMax);
-      updateHoursLabel();
-      renderGrid();
-    } else {
-      alert('Heure minimum atteinte (18h).');
-    }
-  });
+  $('hoursRangeLabel').addEventListener('click', () => { if (currentUser && currentUser.is_admin) openEditHours(); });
+  $('editHoursBtn').addEventListener('click', openEditHours);
+  $('cancelHoursBtn').addEventListener('click', closeEditHours);
+  $('saveHoursBtn').addEventListener('click', saveHoursRange);
   updateHoursLabel();
   $('cancelCopyBtn').addEventListener('click', cancelCopy);
   $('includedAddBtn').addEventListener('click', confirmIncludedMassage);
@@ -566,6 +612,7 @@ function doLogout() {
   localStorage.removeItem('user');
   token = null;
   currentUser = null;
+  if (liveEventSource) { liveEventSource.close(); liveEventSource = null; }
   showLogin();
 }
 
@@ -866,14 +913,16 @@ function showMain() {
   $('userLabel').textContent = currentUser.full_name;
   $('navAdmin').classList.toggle('hidden', !currentUser.is_admin);
   $('navPersonnaliser').classList.toggle('hidden', !currentUser.is_admin);
-  $('sidebarOrderSaveWrap').classList.toggle('hidden', !currentUser.is_admin);
+  $('editHoursBtn').classList.toggle('hidden', !currentUser.is_admin);
   renderCalendar();
   loadRoomsAndReservations();
   loadAuberges();
   loadExtras();
   loadFormOrder();
   loadSidebarOrder();
+  loadHoursRange();
   initSidebarDrag();
+  connectLiveUpdates();
 }
 
 async function authFetch(url, options = {}) {
@@ -989,6 +1038,28 @@ async function loadReservations() {
   Object.keys(datesCache).forEach((k) => delete datesCache[k]);
 }
 
+// ---------- Mises a jour en direct (plusieurs personnes de l'equipe travaillent en meme temps) ----------
+// Des qu'un autre appareil cree/modifie/deplace/supprime une reservation, ce navigateur
+// se rafraichit tout seul si c'est le meme jour affiche - comme Google Sheets.
+let liveEventSource = null;
+
+function connectLiveUpdates() {
+  if (liveEventSource) liveEventSource.close();
+  liveEventSource = new EventSource(`${API}/api/events?token=${encodeURIComponent(token)}`);
+  liveEventSource.onmessage = (e) => {
+    try {
+      const payload = JSON.parse(e.data);
+      if (payload.type === 'reservations' && payload.date === currentDate) {
+        loadReservations();
+        renderCalendar();
+      }
+    } catch (err) { /* message non-JSON (ping), ignore */ }
+  };
+  liveEventSource.onerror = () => {
+    // Le navigateur relance automatiquement la connexion EventSource ; rien a faire ici.
+  };
+}
+
 // Une reservation "incluse" (massage ou hammam offert dans un pack Taziri/Royal)
 // ne compte jamais comme un client separe : c'est la suite du meme rituel.
 function isIncludedSession(r) {
@@ -1095,7 +1166,7 @@ function renderGrid() {
         cell.innerHTML = list.map((res, idx) => {
           const svc = services.find((s) => s.id === res.service_id);
           const nb = res.nb_personnes || 1;
-          const genreColor = res.sexe === 'femme' ? '#db2777' : (res.sexe === 'homme' ? '#2563eb' : '#374151');
+          const genreColor = res.sexe === 'femme' ? '#db2777' : (res.sexe === 'homme' ? '#2563eb' : (res.sexe === 'fille' ? '#c026d3' : (res.sexe === 'garcon' ? '#0891b2' : '#374151')));
           const separator = idx > 0 ? '<hr style="border:none;border-top:2px dashed #d1d5db;margin:6px 0;">' : '';
           const aubergeColor = res.sans_commission ? '#1f2937' : '#ea580c';
           return separator + `
@@ -1143,7 +1214,7 @@ function renderGrid() {
 function resizeGridWrapper() {
   const wrapper = $('gridWrapper');
   if (!wrapper || wrapper.offsetParent === null) return;
-  const controlsBar = wrapper.parentElement.querySelector('#addHourBtn');
+  const controlsBar = wrapper.parentElement.querySelector('#hoursRangeLabel');
   const controlsHeight = controlsBar ? controlsBar.closest('div').offsetHeight : 0;
   const top = wrapper.getBoundingClientRect().top;
   const available = window.innerHeight - top - controlsHeight;
@@ -1193,7 +1264,7 @@ function renderSlotList() {
   } else {
     wrap.innerHTML = list.map((res) => {
       const svc = services.find((s) => s.id === res.service_id);
-      const genreColor = res.sexe === 'femme' ? '#db2777' : (res.sexe === 'homme' ? '#2563eb' : '#374151');
+      const genreColor = res.sexe === 'femme' ? '#db2777' : (res.sexe === 'homme' ? '#2563eb' : (res.sexe === 'fille' ? '#c026d3' : (res.sexe === 'garcon' ? '#0891b2' : '#374151')));
       const aubergeColor = res.sans_commission ? '#1f2937' : '#ea580c';
       const nb = res.nb_personnes || 1;
       return `
@@ -1212,6 +1283,7 @@ function renderSlotList() {
           ${nb > 1 ? `<button class="slot-btn-split" data-split="${res.id}">Diviser</button>` : ''}
           <button class="slot-btn-del" data-del="${res.id}">Suppr</button>
         </div>
+        ${svc && (svc.name === 'Taziri' || svc.name === 'Royal') ? `<button class="slot-btn-included" data-included="${res.id}" style="width:100%;margin-top:6px;background:#fef3c7;color:#92400e;border:none;padding:8px;border-radius:8px;font-size:12.5px;font-weight:700;cursor:pointer;">🎁 Session incluse (${currentRoom.section === 'HAMMAM' ? 'massage' : 'hammam'})</button>` : ''}
       </div>
     `;
     }).join('');
@@ -1223,6 +1295,14 @@ function renderSlotList() {
     });
     wrap.querySelectorAll('[data-split]').forEach((btn) => {
       btn.onclick = () => openSplitModal(list.find((r) => r.id == btn.dataset.split));
+    });
+    wrap.querySelectorAll('[data-included]').forEach((btn) => {
+      btn.onclick = () => {
+        const res = list.find((r) => r.id == btn.dataset.included);
+        const svc = services.find((s) => s.id === res.service_id);
+        closeModal();
+        offerIncludedSession(res, svc, currentRoom.section === 'HAMMAM' ? 'massage' : 'hammam');
+      };
     });
     wrap.querySelectorAll('[data-del]').forEach((btn) => {
       btn.onclick = async () => {
@@ -1238,11 +1318,14 @@ function renderSlotList() {
   const dejaPris = list.reduce((sum, r) => sum + (r.nb_personnes || 0), 0);
   const peutAjouter = currentRoom.capacity_flexible || dejaPris < currentRoom.capacity_base;
   $('addNewBtn').style.display = peutAjouter ? 'block' : 'none';
+  $('addGroupBtn').style.display = peutAjouter ? 'block' : 'none';
   $('addNewBtn').onclick = () => showForm(null);
+  $('addGroupBtn').onclick = () => openGroupModal();
 }
 
 function showForm(existing) {
   editingResId = existing ? existing.id : null;
+  $('switchToGroupBtn').style.display = existing ? 'none' : 'block';
   $('fService').value = existing ? existing.service_id || '' : '';
   $('fClient').value = existing ? existing.client_type || '' : '';
   $('fNbPersonnes').value = existing ? existing.nb_personnes || '' : '';
@@ -1544,6 +1627,7 @@ function splitNamesList(res) {
 
 function openSplitModal(res) {
   splitBaseRes = res;
+  closeModal();
   $('splitErrMsg').textContent = '';
   $('splitSub').textContent = `${res.nb_personnes} ${res.sexe || ''}(s) - ${res.client_type || ''}`;
   const names = splitNamesList(res);
@@ -1560,6 +1644,128 @@ function closeSplitModal() {
   $('splitModal').classList.remove('show');
   splitBaseRes = null;
 }
+
+// ---------- Ajouter un groupe (plusieurs personnes, sexes et soins differents, en une fois) ----------
+let groupRowCount = 0;
+
+function openGroupModal() {
+  closeModal();
+  groupRowCount = 0;
+  $('groupPersonRows').innerHTML = '';
+  addGroupPersonRow();
+  $('fGroupOrigine').value = 'etranger';
+  $('fGroupAuberge').value = '';
+  $('fGroupClient').value = '';
+  $('fGroupSansCommission').checked = false;
+  $('fGroupTaxi').checked = false;
+  $('fGroupNote').value = '';
+  $('groupErrMsg').textContent = '';
+  $('groupModal').classList.add('show');
+}
+
+function closeGroupModal() {
+  $('groupModal').classList.remove('show');
+}
+
+function addGroupPersonRow() {
+  const rowId = groupRowCount++;
+  const svcOptions = services.map((s) => `<option value="${s.id}">${s.name} (${s.category}) - ${s.prix}dh</option>`).join('');
+  const row = document.createElement('div');
+  row.className = 'group-person-row';
+  row.dataset.rowId = rowId;
+  row.style.cssText = 'display:flex;gap:6px;align-items:center;margin-bottom:8px;';
+  row.innerHTML = `
+    <select class="group-sexe-select" style="flex:1;margin:0;">
+      <option value="homme">Homme</option>
+      <option value="femme">Femme</option>
+      <option value="garcon">Garcon</option>
+      <option value="fille">Fille</option>
+    </select>
+    <select class="group-service-select" style="flex:2;margin:0;">${svcOptions}</select>
+    <button type="button" class="group-row-del" data-row-id="${rowId}" style="background:#fee2e2;color:#b91c1c;border:none;width:32px;height:32px;border-radius:8px;font-weight:700;cursor:pointer;flex-shrink:0;">✕</button>
+  `;
+  $('groupPersonRows').appendChild(row);
+  row.querySelector('.group-row-del').addEventListener('click', () => removeGroupPersonRow(rowId));
+}
+
+function removeGroupPersonRow(rowId) {
+  const rows = $('groupPersonRows').querySelectorAll('.group-person-row');
+  if (rows.length <= 1) return; // toujours garder au moins 1 personne
+  const row = $('groupPersonRows').querySelector(`[data-row-id="${rowId}"]`);
+  if (row) row.remove();
+}
+
+async function confirmGroup() {
+  const msg = $('groupErrMsg');
+  msg.textContent = '';
+  const rows = Array.from($('groupPersonRows').querySelectorAll('.group-person-row'));
+  if (rows.length === 0) {
+    msg.textContent = 'Ajoute au moins une personne.';
+    return;
+  }
+
+  const auberge = $('fGroupAuberge').value.trim();
+  const sansCommission = $('fGroupSansCommission').checked;
+  const origine = $('fGroupOrigine').value;
+  const taxi = $('fGroupTaxi').checked;
+  const note = $('fGroupNote').value;
+  const clientName = $('fGroupClient').value.trim();
+
+  // Regrouper les personnes par (sexe, soin) : celles qui ont le meme sexe ET le meme soin
+  // deviennent une seule reservation groupee.
+  const groups = new Map(); // "sexe|serviceId" -> nb
+  rows.forEach((row) => {
+    const sexe = row.querySelector('.group-sexe-select').value;
+    const serviceId = parseInt(row.querySelector('.group-service-select').value, 10);
+    const key = `${sexe}|${serviceId}`;
+    groups.set(key, (groups.get(key) || 0) + 1);
+  });
+
+  const createdResults = [];
+  try {
+    for (const [key, nb] of groups.entries()) {
+      const [sexe, serviceIdStr] = key.split('|');
+      const serviceId = parseInt(serviceIdStr, 10);
+      const svc = services.find((s) => s.id === serviceId);
+      const prix = computeSplitPrice(svc, nb, auberge, sansCommission);
+      const createRes = await authFetch(`${API}/api/reservations`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          room_id: currentRoom.id, service_id: serviceId, date: currentDate, hour: currentHour,
+          duration: 1, client_type: clientName, nb_personnes: nb, sexe, origine, auberge,
+          sans_commission: sansCommission, taxi, prix, note, staff_names: '', carte_cadeaux: false,
+        }),
+      });
+      if (!createRes.ok) {
+        const d = await createRes.json();
+        msg.textContent = d.error || `Erreur pour ${nb} ${sexe}(s).`;
+        return;
+      }
+      const saved = await createRes.json().catch(() => null);
+      if (saved) createdResults.push({ saved, svc });
+    }
+
+    closeGroupModal();
+    await loadReservations();
+    renderCalendar();
+    renderSlotList();
+
+    createdResults.forEach(({ saved, svc }) => {
+      if (svc && (svc.name === 'Taziri' || svc.name === 'Royal')) {
+        offerIncludedSession(saved, svc, currentRoom.section === 'HAMMAM' ? 'massage' : 'hammam');
+      }
+    });
+  } catch (e) {
+    msg.textContent = 'Erreur de connexion.';
+  }
+}
+
+$('addGroupRowBtn').addEventListener('click', addGroupPersonRow);
+$('groupCloseBtn').addEventListener('click', closeGroupModal);
+$('groupCancelBtn').addEventListener('click', closeGroupModal);
+$('groupConfirmBtn').addEventListener('click', confirmGroup);
+$('switchToGroupBtn').addEventListener('click', () => { closeModal(); openGroupModal(); });
 
 // Meme formule que recalcPrice() (utilisee dans le formulaire normal), reutilisee ici
 // pour que chaque reservation issue d'une division ait le prix juste pour SON soin et SON nombre de personnes.
@@ -2451,29 +2657,14 @@ function applySidebarOrder(order) {
 }
 
 async function saveSidebarOrder() {
-  const msg = $('sidebarOrderMsg');
-  msg.style.color = '#e8dcc8';
-  msg.textContent = 'Enregistrement...';
   try {
-    const res = await authFetch(`${API}/api/sidebar-order`, {
+    await authFetch(`${API}/api/sidebar-order`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ order: sidebarOrder }),
     });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      msg.style.color = '#fca5a5';
-      msg.textContent = data.error || 'Erreur lors de l\'enregistrement.';
-      return;
-    }
-    msg.style.color = '#86efac';
-    msg.textContent = 'Ordre du menu enregistre.';
-  } catch (e) {
-    msg.style.color = '#fca5a5';
-    msg.textContent = 'Erreur de connexion.';
-  }
+  } catch (e) { /* silencieux : l'ordre reste correct a l'ecran meme si la sauvegarde echoue */ }
 }
-$('saveSidebarOrderBtn').addEventListener('click', saveSidebarOrder);
 
 function initSidebarDrag() {
   if (!currentUser || !currentUser.is_admin) return; // seul le patron peut reorganiser le menu
@@ -2548,7 +2739,7 @@ function finishSidebarDrag(btn) {
   btn.classList.remove('sidebar-dragging');
   if (dragGhostEl) { dragGhostEl.remove(); dragGhostEl = null; }
   sidebarOrder = Array.from(document.querySelectorAll('.sidebar-item')).map((el) => el.dataset.view);
-  $('sidebarOrderMsg').textContent = '';
+  saveSidebarOrder();
 }
 
 init();
